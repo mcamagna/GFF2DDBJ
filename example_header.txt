@@ -1,0 +1,29 @@
+#This file contains all information that is required for writing a DDBJ annotation file.				
+#Please replace all XXX with the corresponding value.				
+#You are free to add additional values. Check https://www.ddbj.nig.ac.jp/ddbj/file-format-e.html				
+#for reference on what values are permitted.				
+#Note: All lines starting with a # are ignored by GFF2DDJB. Remove the # to add optional information				
+				
+COMMON	SUBMITTER		contact	XXX
+			ab_name	XXX
+			email	XXX
+			phone	XXX
+			institute	XXX
+#			department	OPTIONAL			
+			country	XXX
+#			state
+			city	XXX
+			street	XXX
+			zip	XXX
+#			mol_type	OPTIONAL
+#			organism	OPTIONAL
+#			chromosome	OPTIONAL
+#			strain	OPTIONAL
+
+
+
+	REFERENCE		title	XXX
+			ab_name	XXX
+			year	XXX
+			status	XXX
+
