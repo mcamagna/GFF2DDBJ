@@ -15,8 +15,8 @@ COMMON	SUBMITTER		contact	XXX
 			city	XXX
 			street	XXX
 			zip	XXX
-#			mol_type	OPTIONAL
-#			organism	OPTIONAL
+#			mol_type	HIGHLY_RECOMMENDED
+#			organism	HIGHLY_RECOMMENDED
 #			chromosome	OPTIONAL
 #			strain	OPTIONAL
 

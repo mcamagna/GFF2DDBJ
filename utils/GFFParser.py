@@ -26,7 +26,24 @@ class Feature:
     
     def getAttribute(self, name):
         return self.attributes.get(name)
-        
+    
+    
+    def clone(self):
+        f = Feature()
+        import copy
+        f.seqid = self.seqid
+        f.source = self.source
+        f.gfftype = self.gfftype
+        f.start = self.start
+        f.end = self.end
+        f.score = self.score
+        f.strand = self.strand
+        f.phase = self.phase
+        f.attributes = copy.deepcopy(self.attributes)    
+        f.parent = self.parent
+        f.children = self.children
+        return f
+    
     
 class GFFParser:
     
@@ -51,6 +68,7 @@ class GFFParser:
         for line in file_handle:
             if line.startswith("#"):
                 continue
+            line = line.replace("\n", "")
             #print(line)
             spl = line.split("\t")
             seqid=spl[0]
@@ -105,6 +123,7 @@ class GFFParser:
                     placeholders.append(parent)
                     parent.addAttribute("ID", parent_id)
                     self.features[parent_id] = parent
+                    self.parentFeatures.append(parent)
                     
                 parent.children.append(f)
                 f.parent = parent
