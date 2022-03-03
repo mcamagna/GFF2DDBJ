@@ -1,24 +1,13 @@
 '''
 @author: Maurizio Camagna
 '''
+from utils.Parameters import Parameters
+
 
 class DDBJWriter:
     
-    def __init__(self, outpath, header_file):
+    def __init__(self, outpath):
         self.outpath = outpath
-        self.header_file = header_file
-        DDBJWriter.common = dict()
-        
-        if self.header_file is not None:
-            self._parseHeaderFile()
-        
-        DDBJWriter.source_attributes = {"organism":None, "mol_type":None}
-        #search the parsed header whether they contain the mandatory values for organism and mol_type
-        for _dict in DDBJWriter.common.values():
-            if "organism" in _dict.keys():
-                DDBJWriter.source_attributes["organism"] = _dict.get("organism")
-            if "mol_type" in _dict.keys():
-                DDBJWriter.source_attributes["mol_type"] = _dict.get("mol_type")
 
         
     def _parseHeaderFile(self):
@@ -41,30 +30,24 @@ class DDBJWriter:
                 value = spl[4]
                 
                 
-                current_dict = DDBJWriter.common.get(current_feature)
+                current_dict = Parameters.params.get(current_feature)
                 if current_dict is None:
                     current_dict = dict()
-                    DDBJWriter.common[current_feature] = current_dict
+                    Parameters.params[current_feature] = current_dict
                 current_dict[qualifier] = value
-                DDBJWriter.common[current_feature] = current_dict
-            
-    def organismWasProvided(self):
-        return DDBJWriter.source_attributes.get("organism") is not None
-                    
-    def molTypeWasProvided(self):
-        return DDBJWriter.source_attributes.get("mol_type") is not None
-                    
+                Parameters.params[current_feature] = current_dict
+                     
                     
     def writeHeader(self):
         s = "COMMON"
 
-        for feature_name in DDBJWriter.common:
+        for feature_name in Parameters.params:
             s+= "\t"
             s+= feature_name
             s+= '\t\t'
             
-            for qualifier in DDBJWriter.common[feature_name]:
-                value = DDBJWriter.common[feature_name][qualifier]
+            for qualifier in Parameters.params[feature_name]:
+                value = Parameters.params[feature_name][qualifier]
                 s += qualifier
                 s += '\t'
                 s += value
@@ -75,13 +58,6 @@ class DDBJWriter:
             out.write(s)
         
         
-    @staticmethod
-    def printCommonParameters():
-        for feature_name in DDBJWriter.common:
-            print()
-            print(feature_name)
-            for qualifier in DDBJWriter.common[feature_name]:
-                print("\t"+qualifier, DDBJWriter.common[feature_name][qualifier])
     
     
     
@@ -98,9 +74,9 @@ class DDBJWriter:
         if isSourceFeature:
             s+= f.seqid + '\t'
             if f.attributes.get("organism") is None:
-                f.attributes['organism'] = DDBJWriter.source_attributes['organism']
+                f.attributes['organism'] = Parameters.source_attributes['organism']
             if f.attributes.get("mol_type") is None:
-                f.attributes['mol_type'] = DDBJWriter.source_attributes['mol_type']
+                f.attributes['mol_type'] = Parameters.source_attributes['mol_type']
         else:
             s += '\t'
         

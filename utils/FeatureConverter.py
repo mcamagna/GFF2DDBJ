@@ -4,6 +4,8 @@ This will help to check whether GFF features are permissable as DDBJ entries and
 '''
 from utils.GFFParser import Feature
 from utils.DDBJWriter import DDBJWriter
+from utils.FastaParser import FastaParser
+from utils.Parameters import Parameters
 
 class FeatureConverter:
     
@@ -93,27 +95,32 @@ class FeatureConverter:
     
     def _addSourceFeatures(self, gff_feature_dict):
         """DDBJ annotation files require a 'source' feature. Typically, this source represents the chromosome or contig
-        and we can therefore use the GFF seqid to merge GFF entries that belong to the same 'source'
+        and we can therefore use the GFF seqid to obtain the data from the fasta file.
         """
+        needs_submitter_seqid = False
+        try:
+            datatype = Parameters.params["DATATYPE"]['type']
+            if datatype == "WGS" or datatype == "TSA" or datatype == "TLS" or datatype == "CON":
+                needs_submitter_seqid = True
+        except:
+            pass 
+        
         grouped_locations = dict()
         
         for key, feature in gff_feature_dict.items():
             group = grouped_locations.get(feature.seqid)
             if group is None:
-                group = {"name":feature.seqid, "features":[], "start_list":[], "end_list":[]}
+                group = {"name":feature.seqid, "features":[]}
                 grouped_locations[feature.seqid] = group
-                
             group["features"].append(feature)
-            group["start_list"].append(feature.start)
-            group["end_list"].append(feature.end)
         
         for group_key, group in grouped_locations.items():
-            #start = min(group["start_list"])
-            #UME validation showed an error. It seems like the source start must always equal 1?!
             start = 1
-            
-            end = max(group["end_list"])
-            attr = DDBJWriter.source_attributes.copy()
+            end = FastaParser.fasta_dict[group_key] -2 #-2 because this is what UME validator asks for
+            attr = Parameters.source_attributes.copy()
+            if needs_submitter_seqid:
+                attr["submitter_seqid"] = group_key
+                
             group_feature = Feature(seqid=group_key,gfftype="source", start=start, end=end, attribute_dict=attr)
             
             #Drop all hierarchies in all subnodes and make the source feature the parent of all children
@@ -122,7 +129,18 @@ class FeatureConverter:
                 child.parent = group_feature
                 child.children.clear()
             gff_feature_dict[group_key] = group_feature
-     
+        
+        #finally we need to also add all contigs/chromosomes that
+        #are present in the fasta file, but not in the GFF file
+        remaining = set(FastaParser.fasta_dict.keys()).difference(set(grouped_locations.keys()))
+        for key in remaining:
+            start = 1
+            end = FastaParser.fasta_dict[key] -2 #-2 because this is what UME validator asks for
+            attr = Parameters.source_attributes.copy()
+            if needs_submitter_seqid:
+                attr["submitter_seqid"] = group_key
+            feature = Feature(seqid=key,gfftype="source", start=start, end=end, attribute_dict=attr)
+            gff_feature_dict[group_key] = feature
      
     def _removeGeneFeatures(self, gff_feature_dict):
         """Genes are not allowed in DDBJ annotation files. Instead of simply removing them,
