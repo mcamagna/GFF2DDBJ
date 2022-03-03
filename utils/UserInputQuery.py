@@ -30,10 +30,13 @@ class UserInputQuery:
         for key in mol_types.keys():
             print("  ["+str(key)+"] "+mol_types[key])
         
-        inp = input("Number of the mol_type: ")
+        inp = input("Select mol_type number: ")
         selection = mol_types.get(inp)
         if selection is not None and selection !='EXIT':
             return selection
+        else:
+            print("ERROR: Invalid selection... exiting")
+            sys.exit(128)
         
     def askUserForOrganism(self):
         print("\nI couldn't find the mandatory value 'organism' in the header.")

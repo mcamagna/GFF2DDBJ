@@ -7,18 +7,18 @@ class DDBJWriter:
     def __init__(self, outpath, header_file):
         self.outpath = outpath
         self.header_file = header_file
-        self.common = dict()
+        DDBJWriter.common = dict()
         
         if self.header_file is not None:
             self._parseHeaderFile()
         
-        self.source_attributes = {"organism":None, "mol_type":None}
+        DDBJWriter.source_attributes = {"organism":None, "mol_type":None}
         #search the parsed header whether they contain the mandatory values for organism and mol_type
-        for _dict in self.common.values():
+        for _dict in DDBJWriter.common.values():
             if "organism" in _dict.keys():
-                self.source_attributes["organism"] = _dict.get("organism")
+                DDBJWriter.source_attributes["organism"] = _dict.get("organism")
             if "mol_type" in _dict.keys():
-                self.source_attributes["mol_type"] = _dict.get("mol_type")
+                DDBJWriter.source_attributes["mol_type"] = _dict.get("mol_type")
 
         
     def _parseHeaderFile(self):
@@ -41,30 +41,30 @@ class DDBJWriter:
                 value = spl[4]
                 
                 
-                current_dict = self.common.get(current_feature)
+                current_dict = DDBJWriter.common.get(current_feature)
                 if current_dict is None:
                     current_dict = dict()
-                    self.common[current_feature] = current_dict
+                    DDBJWriter.common[current_feature] = current_dict
                 current_dict[qualifier] = value
-                self.common[current_feature] = current_dict
+                DDBJWriter.common[current_feature] = current_dict
             
     def organismWasProvided(self):
-        return self.source_attributes.get("organism") is not None
+        return DDBJWriter.source_attributes.get("organism") is not None
                     
     def molTypeWasProvided(self):
-        return self.source_attributes.get("mol_type") is not None
+        return DDBJWriter.source_attributes.get("mol_type") is not None
                     
                     
     def writeHeader(self):
         s = "COMMON"
 
-        for feature_name in self.common:
+        for feature_name in DDBJWriter.common:
             s+= "\t"
             s+= feature_name
             s+= '\t\t'
             
-            for qualifier in self.common[feature_name]:
-                value = self.common[feature_name][qualifier]
+            for qualifier in DDBJWriter.common[feature_name]:
+                value = DDBJWriter.common[feature_name][qualifier]
                 s += qualifier
                 s += '\t'
                 s += value
@@ -75,13 +75,13 @@ class DDBJWriter:
             out.write(s)
         
         
-    
-    def printCommonParameters(self):
-        for feature_name in self.common:
+    @staticmethod
+    def printCommonParameters():
+        for feature_name in DDBJWriter.common:
             print()
             print(feature_name)
-            for qualifier in self.common[feature_name]:
-                print("\t"+qualifier, self.common[feature_name][qualifier])
+            for qualifier in DDBJWriter.common[feature_name]:
+                print("\t"+qualifier, DDBJWriter.common[feature_name][qualifier])
     
     
     
@@ -93,14 +93,14 @@ class DDBJWriter:
         return s
     
     
-    def writeFeature(self, f, isSourceFeature=False):
+    def _writeFeature(self, f, isSourceFeature=False):
         s = ""
         if isSourceFeature:
             s+= f.seqid + '\t'
             if f.attributes.get("organism") is None:
-                f.attributes['organism'] = self.source_attributes['organism']
+                f.attributes['organism'] = DDBJWriter.source_attributes['organism']
             if f.attributes.get("mol_type") is None:
-                f.attributes['mol_type'] = self.source_attributes['mol_type']
+                f.attributes['mol_type'] = DDBJWriter.source_attributes['mol_type']
         else:
             s += '\t'
         
@@ -132,17 +132,22 @@ class DDBJWriter:
             out.write(s)
         
         
-         
-    def writeWholeFeature(self, feature):
-        """Writes a feature, including subfeatures such as CDS, UTR's etc"""
-        if feature.gfftype.lower() != "source":
-            source_feature = feature.clone()
-            source_feature.gfftype = 'source'
-            self.writeFeature(source_feature, isSourceFeature=True)
-        self.writeFeature(feature)
+    def writeFeatures(self, features_dict, sorted_source_feature_keys):
+        """Writes a all feature to file. The sorted source features must be provided.
+        Note: DDBJ appears to insist that the order of contigs/chromosomes must be the same as 
+        in the corresponding fasta file. """
+        #source_feature_keys = []
+        #for fk in features_dict.keys():
+        #    if features_dict[fk].gfftype == "source":
+        #        source_feature_keys.append(fk)
+        source_feature_keys = sorted_source_feature_keys
         
-        for child in feature.children:
-            child_type = child.gfftype.lower()
-            if child_type == 'cds' or child_type == "exon" or child_type == 'mrna':
-                self.writeFeature(child)
-        pass
+        for sk in source_feature_keys:
+            source_feature = features_dict.get(sk)
+            if source_feature is None:
+                #print(f"Warning: {sk} does not have a source feature.")
+                continue
+            self._writeFeature(source_feature, isSourceFeature=True)
+            for child in source_feature.children:
+                self._writeFeature(child)
+        

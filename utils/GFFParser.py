@@ -2,6 +2,7 @@
 Braker2 generated GFF files lack the gene feature. We'll try to parse the file as generic as possible to allow conversion of other GFF files as well
 @author: Maurizio Camagna
 '''
+from utils.DDBJWriter import DDBJWriter
 
 class Feature:
     
@@ -14,7 +15,7 @@ class Feature:
         self.score = score
         self.strand = strand
         self.phase = phase
-        self.attributes = None
+        self.attributes = attribute_dict
         if self.attributes is None:
             self.attributes = dict()
         
@@ -26,6 +27,39 @@ class Feature:
     
     def getAttribute(self, name):
         return self.attributes.get(name)
+    
+    def getParent(self):
+        return self.parent
+    
+    def getUltimateParent(self):
+        if self.parent is not None:
+            return self.parent.getUltimateParent()
+        return self
+    
+    def getAllDownstreamChildren(self):
+        allchildren = set()
+        for child in self.children:
+            allchildren.add(child)
+            allchildren.update(child.getAllDownstreamChildren())
+        return allchildren
+    
+    
+    def getAllDownstreamCDS(self):
+        allcds = set()
+        for child in self.children:
+            if child.gfftype.lower()=="cds":
+                allcds.add(child)
+                allcds.update(child.getAllDownstreamCDS())
+        return allcds
+    
+    
+    def getAllDownstreamMRNA(self):
+        allmrna = set()
+        for child in self.children:
+            if child.gfftype.lower()=="mrna":
+                allmrna.add(child)
+                allmrna.update(child.getAllDownstreamCDS())
+        return allmrna
     
     
     def clone(self):
@@ -100,7 +134,7 @@ class GFFParser:
     def _connectFeatures(self):    
         """Connects features that are in a parent/child relationship."""
         
-        placeholders = [] #a list of placeholder features, which we may need of some parent features are missing
+        placeholders = [] #a list of placeholder features, which we may need if some parent features are missing
         
         keys = list(self.features.keys()) #save a copy because the size of the dict may change
         
@@ -130,14 +164,18 @@ class GFFParser:
         
         for placeholder in placeholders:
             self._fixPlaceholder(placeholder)
-                
+        
+        #TODO: rebuild parent list
     
            
     def _fixPlaceholder(self, placeholder_feature):
-        """Placeholder feauters are parent features that were missing in the GFF file.
+        """Placeholder features are features, that were created because the entries in the GFF
+        file were referring to a parent, that was not written into the GFF file.
         Using their child nodes, we can infer the required information.
         """
         children_contain_gene_feature = False
+        child_gene = None
+        
         
         child_start_positions = []
         child_end_positions = []
@@ -152,6 +190,7 @@ class GFFParser:
             child_type = child.gfftype.upper()
             if child_type == "GENE":
                 children_contain_gene_feature = True
+                child_gene = child
             
             if seqid is None:
                 seqid = child.seqid
@@ -171,13 +210,24 @@ class GFFParser:
         placeholder_feature.strand = strand
         placeholder_feature.score = '.'
         placeholder_feature.phase = '.'
+        #placeholder_feature.attributes["organism"] = DDBJWriter.source_attributes["organism"]
+        #placeholder_feature.attributes["mol_type"] = DDBJWriter.source_attributes["mol_type"]
         
         
         if not children_contain_gene_feature:
             placeholder_feature.gfftype = "gene"
         else:
-            print("Warning: Found gene with an unknown parent. Adding 'source' feature as parent of that gene")
-            placeholder_feature.gfftype = "source"
+            #The placeholder contains a gene feature as child.
+            #We will make that gene the parent of the other children of the placeholder
+            #before removing the placeholder, since it serves no purpose
+            new_parent = child_gene
+            for pc in placeholder_feature.children:
+                if pc != new_parent:
+                    new_parent.children.add(pc)
+                    pc.parent = new_parent
+            self.parentFeatures.remove(placeholder_feature)
+            self.parentFeatures.append(new_parent)
+            self.features.pop(placeholder_feature.attributes.get("ID"))
         
            
     
