@@ -98,7 +98,7 @@ class Parameters:
         
         if Parameters.hasCommonParam("DIVISION", "division", 'EST'):
             Parameters.addCommonParamIfMissing("KEYWORD", "keyword", "EST")
-            #TODO: need to also add ff_definition depending on mRNA or cDNA EST
+            Parameters.source_attributes["ff_definition"] = "@@[organism]@@ "+UserInputQuery().askForEST2()+", clone: @@[clone]@@"
         
         if Parameters.hasCommonParam("DIVISION", "division", 'GSS'):
             Parameters.addCommonParamIfMissing("KEYWORD", "keyword", "GSS")

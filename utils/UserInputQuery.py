@@ -63,6 +63,22 @@ class UserInputQuery:
             print("ERROR: Invalid selection... exiting")
             sys.exit(128)
     
+    def askForEST2(self):    
+        print("\nAre your EST submission samples mRNA or cDNA?")
+ 
+        responses = {"1":"mRNA", 
+                      "2":"cDNA", 
+                      "0": 'EXIT'}
+        for key in responses.keys():
+            print("  ["+str(key)+"] "+responses[key])
+        inp = input("Select number: ")
+        selection = responses.get(inp)
+        if selection is not None and selection !='EXIT':
+            return selection
+        else:
+            print("ERROR: Invalid selection... exiting")
+            sys.exit(128)
+    
     
     def askUserForMolType(self):
         print("\nI couldn't find the mandatory value 'mol_type' in the header.")
