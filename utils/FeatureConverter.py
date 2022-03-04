@@ -108,6 +108,8 @@ class FeatureConverter:
         grouped_locations = dict()
         
         for key, feature in gff_feature_dict.items():
+            if key == "MFG217701_contig0268":
+                print("DEBUG")
             group = grouped_locations.get(feature.seqid)
             if group is None:
                 group = {"name":feature.seqid, "features":[]}
@@ -134,13 +136,16 @@ class FeatureConverter:
         #are present in the fasta file, but not in the GFF file
         remaining = set(FastaParser.fasta_dict.keys()).difference(set(grouped_locations.keys()))
         for key in remaining:
+            if key == "MFG217701_contig0268":
+                print("DEBUG")
+            
             start = 1
-            end = FastaParser.fasta_dict[key] -2 #-2 because this is what UME validator asks for
+            end = FastaParser.fasta_dict[key] -2 #-2 because this is what UME validator asks for (lenght starts at 1 and includes last)
             attr = Parameters.source_attributes.copy()
             if needs_submitter_seqid:
-                attr["submitter_seqid"] = group_key
+                attr["submitter_seqid"] = key
             feature = Feature(seqid=key,gfftype="source", start=start, end=end, attribute_dict=attr)
-            gff_feature_dict[group_key] = feature
+            gff_feature_dict[key] = feature
      
     def _removeGeneFeatures(self, gff_feature_dict):
         """Genes are not allowed in DDBJ annotation files. Instead of simply removing them,
