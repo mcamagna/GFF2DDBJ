@@ -16,31 +16,32 @@ from utils.Parameters import Parameters
 
 
 #Fusarium langsethiae
+#MFG 217701
 INFILE = "data/Aiko/Fusarium_genome/braker_217701/braker.gff3"
 FASTAFILE = 'data/Aiko/Fusarium_genome/SAMD00414474_MFG217701.fasta'
 OUTFILE = "data/SAMD00414474_MFG217701.ann"
 HEADERFILE = "data/aiko_header_217701.txt"
 
-INFILE = "data/Aiko/Fusarium_genome/braker_217702/braker.gff3"
-FASTAFILE = 'data/Aiko/Fusarium_genome/SAMD00414475_MFG217702.fasta'
-OUTFILE = "data/SAMD00414474_MFG217702.ann"
-HEADERFILE = "data/aiko_header_217702.txt"
+#MFG 217702
+#INFILE = "data/Aiko/Fusarium_genome/braker_217702/braker.gff3"
+#FASTAFILE = 'data/Aiko/Fusarium_genome/SAMD00414475_MFG217702.fasta'
+#OUTFILE = "data/SAMD00414474_MFG217702.ann"
+#HEADERFILE = "data/aiko_header_217702.txt"
 
 #TODO: check if all filepaths are found before running heavy operations
 
 Parameters.parseHeaderFile(HEADERFILE)
+
+
 print("The COMMON header currently contains these values:")
 Parameters.printCommonParameters()
+Parameters.askUserForRequiredParameters()
 
 ddbjwriter = DDBJWriter(OUTFILE)
 
-userinputquery = UserInputQuery()
 
-#Check if organism and mol_type were present in the COMMON section, since they are required in every 'source' entry
-if not Parameters.hasQualifier('organism'):
-    Parameters.source_attributes["organism"] = userinputquery.askUserForOrganism()
-if not Parameters.hasQualifier('mol_type'):
-    Parameters.source_attributes["mol_type"] = userinputquery.askUserForMolType()
+
+
 
 
 print("Parsing GFF file:", INFILE)

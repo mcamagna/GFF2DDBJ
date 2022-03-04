@@ -11,11 +11,63 @@ class UserInputQuery:
     
         
         
+    def askForWGS(self):    
+        print("\nThe DATATYPE states WGS. One of the following selections must be chosen:")
+ 
+        responses = {"1":"STANDARD_DRAFT", 
+                      "2":"HIGH_QUALITY_DRAFT", 
+                      "3":"IMPROVED_HIGH_QUALITY_DRAFT", 
+                      "4":"NON_CONTIGUOUS_FINISHED",
+                      "0": 'EXIT'}
+        for key in responses.keys():
+            print("  ["+str(key)+"] "+responses[key])
+        inp = input("Select number: ")
+        selection = responses.get(inp)
+        if selection is not None and selection !='EXIT':
+            return selection
+        else:
+            print("ERROR: Invalid selection... exiting")
+            sys.exit(128)
+            
+            
+    def askForTPA(self):    
+        print("\nThe DATATYPE states TPA. One of the following selections must be chosen:")
+ 
+        responses = {"1":"TPA:inferential", 
+                      "2":"TPA:experimental", 
+                      "0": 'EXIT'}
+        for key in responses.keys():
+            print("  ["+str(key)+"] "+responses[key])
+        inp = input("Select number: ")
+        selection = responses.get(inp)
+        if selection is not None and selection !='EXIT':
+            return selection
+        else:
+            print("ERROR: Invalid selection... exiting")
+            sys.exit(128)
+            
+            
+    def askForEST(self):    
+        print("\nYou specified this as EST submission. One of the following selections must be chosen:")
+ 
+        responses = {"1":"5’-end sequence (5’-EST)", 
+                      "2":"3’-end sequence (3’-EST)", 
+                      "0": 'EXIT'}
+        for key in responses.keys():
+            print("  ["+str(key)+"] "+responses[key])
+        inp = input("Select number: ")
+        selection = responses.get(inp)
+        if selection is not None and selection !='EXIT':
+            return selection
+        else:
+            print("ERROR: Invalid selection... exiting")
+            sys.exit(128)
+    
     
     def askUserForMolType(self):
         print("\nI couldn't find the mandatory value 'mol_type' in the header.")
         print("Please select a mol_type from the list:")
-        mol_types = {"1":"genomic DNA", 
+        responses = {"1":"genomic DNA", 
                       "2":"genomic RNA", 
                       "3":"mRNA", 
                       "4":"tRNA", 
@@ -27,11 +79,11 @@ class UserInputQuery:
                       "10":"unassigned DNA", 
                       "11":"unassigned RNA",
                       "0": 'EXIT'}
-        for key in mol_types.keys():
-            print("  ["+str(key)+"] "+mol_types[key])
+        for key in responses.keys():
+            print("  ["+str(key)+"] "+responses[key])
         
         inp = input("Select mol_type number: ")
-        selection = mol_types.get(inp)
+        selection = responses.get(inp)
         if selection is not None and selection !='EXIT':
             return selection
         else:
@@ -43,5 +95,9 @@ class UserInputQuery:
         inp = input("Please enter the name of the organism: ")
         return inp
 
-        
+
+    def askUserForStrain(self):
+        print("")
+        inp = input("Please enter the name of the strain: ")
+        return inp
   

@@ -99,8 +99,8 @@ class FeatureConverter:
         """
         needs_submitter_seqid = False
         try:
-            datatype = Parameters.params["DATATYPE"]['type']
-            if datatype == "WGS" or datatype == "TSA" or datatype == "TLS" or datatype == "CON":
+            datatype = Parameters.getCommonParams("DATATYPE", "type")
+            if "WGS" in datatype or "TSA" in datatype or "TLS" in datatype or "CON" in datatype:
                 needs_submitter_seqid = True
         except:
             pass 
@@ -108,8 +108,6 @@ class FeatureConverter:
         grouped_locations = dict()
         
         for key, feature in gff_feature_dict.items():
-            if key == "MFG217701_contig0268":
-                print("DEBUG")
             group = grouped_locations.get(feature.seqid)
             if group is None:
                 group = {"name":feature.seqid, "features":[]}
@@ -136,9 +134,6 @@ class FeatureConverter:
         #are present in the fasta file, but not in the GFF file
         remaining = set(FastaParser.fasta_dict.keys()).difference(set(grouped_locations.keys()))
         for key in remaining:
-            if key == "MFG217701_contig0268":
-                print("DEBUG")
-            
             start = 1
             end = FastaParser.fasta_dict[key] -2 #-2 because this is what UME validator asks for (lenght starts at 1 and includes last)
             attr = Parameters.source_attributes.copy()

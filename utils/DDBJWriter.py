@@ -47,19 +47,17 @@ class DDBJWriter:
             s+= '\t\t'
             
             for qualifier in Parameters.params[feature_name]:
-                value = Parameters.params[feature_name][qualifier]
-                s += qualifier
-                s += '\t'
-                s += value
-                s += '\n\t\t\t'
+                values = Parameters.getCommonParams(feature_name, qualifier)
+                for value in values:
+                    s += qualifier
+                    s += '\t'
+                    s += value
+                    s += '\n\t\t\t'
             #remove last two tabs
             s = s[0:-3]
         with open(self.outpath, 'wt') as out:
             out.write(s)
         
-        
-    
-    
     
     def buildLocationString(self, f):
         """Uses the start/end/strand values to build a location string"""
@@ -77,6 +75,7 @@ class DDBJWriter:
                 f.attributes['organism'] = Parameters.source_attributes['organism']
             if f.attributes.get("mol_type") is None:
                 f.attributes['mol_type'] = Parameters.source_attributes['mol_type']
+                
         else:
             s += '\t'
         
@@ -86,21 +85,14 @@ class DDBJWriter:
         s += '\t'
         i = 0
         
-        #TODO: All GFF attributes need to be checked whether they are permissible in a DDBJ annotation
-        attr = f.attributes
-        if attr.get("ID") is not None:
-            attr.pop("ID")
-        if attr.get("Parent") is not None:
-            attr.pop("Parent")
-        ###############################
         
-        for qualifier in attr:
+        for qualifier in f.attributes:
             if i>0:
                 s += '\t\t\t'
             value = f.attributes[qualifier]
             s += qualifier + '\t' + value +'\n'
             i+=1
-        
+            
         if s[-1] != '\n':
             s+="\n"
             
