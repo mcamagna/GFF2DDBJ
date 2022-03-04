@@ -501,6 +501,7 @@ source	O	db_xref
 source	O	dev_stage
 source	O	ecotype
 source	O	environmental_sample
+source	O	ff_definition
 source	O	focus
 source	O	germline
 source	O	haplogroup
