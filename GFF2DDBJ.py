@@ -1,70 +1,85 @@
 '''
 @author: Maurizio Camagna
 '''
-import sys
+import sys, os
 from utils.GFFParser import GFFParser
 from utils.DDBJWriter import DDBJWriter
-from utils.UserInputQuery import UserInputQuery
 from utils.FeatureConverter import FeatureConverter
 from utils.FastaParser import FastaParser
 from utils.Parameters import Parameters
+import argparse
 
-#INFILE = "data/GCF_000143535.2_ASM14353v4_genomic.gff"
-#INFILE = "/mnt/Data/GenomeData/Tomato/ITAG4.1_release/ITAG4.1_gene_models.gff"
-#INFILE = "/mnt/Data/GenomeData/Eggplant/Eggplant_V4.1_function_IPR_final.gff"
-#INFILE = "/mnt/Data/GenomeData/Nicotiana_benthamiana/annotation/Niben101_annotation.gene_models.gff"
-
-
-#Fusarium langsethiae
-#MFG 217701
-INFILE = "data/Aiko/Fusarium_genome/braker_217701/braker.gff3"
-FASTAFILE = 'data/Aiko/Fusarium_genome/SAMD00414474_MFG217701.fasta'
-OUTFILE = "data/SAMD00414474_MFG217701.ann"
-HEADERFILE = "data/aiko_header_217701.txt"
-
-#MFG 217702
-#INFILE = "data/Aiko/Fusarium_genome/braker_217702/braker.gff3"
-#FASTAFILE = 'data/Aiko/Fusarium_genome/SAMD00414475_MFG217702.fasta'
-#OUTFILE = "data/SAMD00414474_MFG217702.ann"
-#HEADERFILE = "data/aiko_header_217702.txt"
-
-#TODO: check if all filepaths are found before running heavy operations
-
-Parameters.parseHeaderFile(HEADERFILE)
+def checkFilepaths(filepaths):
+    for path in filepaths:
+        
+        if not os.path.exists(path):
+            print("ERROR: No file found at", path)
+            sys.exit(1)
 
 
-print("The COMMON header currently contains these values:")
-Parameters.printCommonParameters()
-Parameters.askUserForRequiredParameters()
-
-ddbjwriter = DDBJWriter(OUTFILE)
-
-
-
-
-
-
-print("Parsing GFF file:", INFILE)
-gffparser = GFFParser(INFILE)
-print("Number of features found in GFF file:", len(gffparser.features))
-features = gffparser.features
-
-print("Parsing FASTA file")
-fastaParser = FastaParser(FASTAFILE)
-fasta_headers = fastaParser.getFastaHeaders()
-
-print("Converting features")
-fconverter = FeatureConverter()
-fconverter.convertFeatures(features)
-
-ddbjwriter.writeHeader()
-
-
-
-ddbjwriter.writeFeatures(features, fasta_headers)
-
-print("Conversion finished...")
-
-
-
+def main():
+    Parameters.init()
+    parser = argparse.ArgumentParser(description='A tool to help you convert GFF3 files into DDBJ annotation files.')
+    parser.add_argument('GFF', help='Path to a GFF3 file (can be gzipped).')
+    parser.add_argument('FASTA', help='Path to a FASTA file (can be gzipped).')
+    parser.add_argument('--out', help="Optional: Location where the DDBJ annotation will be stored. If nothing is provided, the annotation file will be stored in the same location as the GFF3 file.")
+    parser.add_argument('--header', help="Optional: Location of the text file specifying the values for the DDBJ header. Check example_header.txt for more information.")
+    parser.add_argument('--organism', help="Optional: Scientific name of the organism.")
+    parser.add_argument('--strain', help="Name of the strain.")
+    parser.add_argument('--mol_type', help="Type of molecule used in the sample. If not provided, you will be asked to choose the type if necessary.")
+    
+    #parser.print_help()
+    
+    
+    args = parser.parse_args()
+    INFILE = args.GFF
+    FASTAFILE = args.FASTA
+    OUTFILE = args.out
+    if OUTFILE is None:
+        OUTFILE = INFILE.replace(".gff3", "").replace(".GFF3", "").replace(".gff", "").replace(".GFF", '')
+        OUTFILE += ".ann"
+        print("Annotation will be written to:", OUTFILE)
+    
+    HEADERFILE = args.header
+    if HEADERFILE is None:
+        print("Warning: No header file was provided. Make sure to manually add the header after the conversion.")
+        checkFilepaths([INFILE, FASTAFILE])
+    else:
+        checkFilepaths([INFILE, FASTAFILE, HEADERFILE])
+        Parameters.parseHeaderFile(HEADERFILE)
+        print("The COMMON header currently contains these values:")
+        Parameters.printCommonParameters()
+    Parameters.askUserForRequiredParameters()
+    
+    ddbjwriter = DDBJWriter(OUTFILE)
+    
+    
+    
+    
+    
+    
+    print("Parsing GFF file:", INFILE)
+    gffparser = GFFParser(INFILE)
+    print("Number of features found in GFF file:", len(gffparser.features))
+    features = gffparser.features
+    
+    print("Parsing FASTA file")
+    fastaParser = FastaParser(FASTAFILE)
+    fasta_headers = fastaParser.getFastaHeaders()
+    
+    print("Converting features")
+    fconverter = FeatureConverter()
+    fconverter.convertFeatures(features)
+    
+    ddbjwriter.writeHeader()
+    
+    
+    
+    ddbjwriter.writeFeatures(features, fasta_headers)
+    
+    print("Conversion finished...")
+    
+    
+if __name__ == "__main__":
+    main()
 
