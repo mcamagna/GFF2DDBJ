@@ -172,8 +172,22 @@ class FeatureConverter:
                 feature.children = None #unnecessary but throws an error if the feature is accidentally used elsewhere
         #Let's remove the gene feature
         [gff_feature_dict.pop(r) for r in to_remove_keys]
-            
     
+    
+    def addAssemblyGaps(self, gff_feature_dict, gaps):
+        for contig_name in gaps.keys():
+            gaplist = gaps[contig_name]
+            for i, gap in enumerate(gaplist):
+                attr = Parameters.assembly_gap_attributes.copy()
+                if attr["estimated_length"] =="known":
+                    attr["estimated_length"] = gap[1]-gap[0]
+                name = contig_name+"_assembly_gap_"+str(i)
+                f = Feature(seqid=contig_name, gfftype="assembly_gap", start=gap[0]+1, end=gap[1], strand="+", attribute_dict=attr)
+                f.parent = gff_feature_dict.get(contig_name)
+                gff_feature_dict.get(contig_name).children.append(f)
+                
+                gff_feature_dict[name] = f
+        
     def convertFeatures(self, gff_feature_dict):
         len_before = len(gff_feature_dict)
         
@@ -183,7 +197,6 @@ class FeatureConverter:
         self._addSourceFeatures(gff_feature_dict)
         self._checkValidityOfQualifiers(gff_feature_dict)
         self._removeEntriesWithouthQualifiers(gff_feature_dict)
-        
         
         len_after = len(gff_feature_dict)
         removed_feature_count = len_before-len_after

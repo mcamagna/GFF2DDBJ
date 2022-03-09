@@ -8,6 +8,7 @@ class Parameters:
         Parameters.qualifiers = set()
         Parameters.string = ""
         Parameters.source_attributes = {"organism":None, "mol_type":None}
+        Parameters.assembly_gap_attributes = {"estimated_length":None, "gap_type":None, "linkage_evidence":None}
         Parameters.keywords = []
     
     @staticmethod
@@ -47,10 +48,6 @@ class Parameters:
         
     @staticmethod
     def parseHeaderFile(header_file):
-        try:
-            Parameters.params
-        except:
-            Parameters.init()
         
         with open(header_file, 'rt') as filehandle:
             current_feature = ""
@@ -144,13 +141,30 @@ class Parameters:
     
     
     @staticmethod
+    def askUserForAssemblyGapInfo():
+        userinputquery = UserInputQuery()
+        
+        #Parameters.assembly_gap_attributes = {"estimated_length":None, "gap_type":None, "linkage_evidence":None}
+        print("\nFound assembly gaps (N's) in the FASTA file!")
+        if Parameters.assembly_gap_attributes.get("estimated_length") is None:
+            Parameters.assembly_gap_attributes['estimated_length'] = userinputquery.askForGapLength()
+        
+        if Parameters.assembly_gap_attributes.get("gap_type") is None:
+            Parameters.assembly_gap_attributes['gap_type'] = userinputquery.askForGapType()
+            
+        if Parameters.assembly_gap_attributes.get("linkage_evidence") is None:
+            Parameters.assembly_gap_attributes['linkage_evidence'] = userinputquery.askForGapLinkage()
+        
+    
+    
+    @staticmethod
     def askUserForRequiredParameters():
         userinputquery = UserInputQuery()
         
         #Check if organism and mol_type were present in the COMMON section, since they are required in every 'source' entry
-        if not Parameters.hasQualifier('organism'):
+        if not Parameters.hasQualifier('organism') and Parameters.source_attributes["organism"] is None:
             Parameters.source_attributes["organism"] = userinputquery.askUserForOrganism()
-        if not Parameters.hasQualifier('mol_type'):
+        if not Parameters.hasQualifier('mol_type') and Parameters.source_attributes["mol_type"] is None:
             Parameters.source_attributes["mol_type"] = userinputquery.askUserForMolType()
         
         if Parameters.hasCommonParam("KEYWORD", "keyword", "WGS"):

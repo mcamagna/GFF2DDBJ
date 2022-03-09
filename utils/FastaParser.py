@@ -1,10 +1,22 @@
+import re
 
 class FastaParser:
     
     def __init__(self, fasta_file_path):
         self.path = fasta_file_path
+        self.gap_regex = re.compile("(N|n)+")
+        self.assembly_gaps = dict()
         self.parseFile()
-        
+    
+    def findGaps(self, fasta_entry_name, seq):    
+        gap_list = None
+        for gap in self.gap_regex.finditer(seq):
+            if gap_list is None: #this is to assure that we only fetch the list once for performance reasons
+                gap_list = self.assembly_gaps.get(fasta_entry_name)
+                if gap_list is None:
+                    gap_list = []
+                    self.assembly_gaps[fasta_entry_name] = gap_list
+            gap_list.append((gap.start(), gap.end()))
         
     def parseFile(self):
         inp = None
@@ -18,19 +30,33 @@ class FastaParser:
         self.seqlens = []
         
         current_seq_len = 0
+        current_lines = []
+        
         for i, line in enumerate(inp):
             if line[-1] == '\n':
                 line = line[:-1]
             
             if line.startswith(">"):
+                line = line[1:].split(" ")[0]
+                
                 if i>0:
+                    current_seq = "".join(current_lines)
+                    current_lines.clear()
+                    self.findGaps(self.headers[-1], current_seq)
+                    current_seq = None
                     self.seqlens.append(current_seq_len)
                 current_seq_len = 0
-                
-                line = line[1:].split(" ")[0]
                 self.headers.append(line)
+                
             else:
                 current_seq_len+= len(line)
+                current_lines.append(line)
+                
+        #Last fasta entry needs to be added        
+        current_seq = "".join(current_lines)
+        current_lines.clear()
+        self.findGaps(self.headers[-1], current_seq)
+        current_seq = None
         self.seqlens.append(current_seq_len)
         inp.close()
         

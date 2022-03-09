@@ -35,6 +35,10 @@ def main():
     INFILE = args.GFF
     FASTAFILE = args.FASTA
     OUTFILE = args.out
+    Parameters.source_attributes['organism'] = args.organism
+    Parameters.source_attributes['mol_type'] = args.mol_type
+    Parameters.source_attributes['strain'] = args.strain
+    
     if OUTFILE is None:
         OUTFILE = INFILE.replace(".gff3", "").replace(".GFF3", "").replace(".gff", "").replace(".GFF", '')
         OUTFILE += ".ann"
@@ -55,9 +59,6 @@ def main():
     
     
     
-    
-    
-    
     print("Parsing GFF file:", INFILE)
     gffparser = GFFParser(INFILE)
     print("Number of features found in GFF file:", len(gffparser.features))
@@ -67,14 +68,16 @@ def main():
     fastaParser = FastaParser(FASTAFILE)
     fasta_headers = fastaParser.getFastaHeaders()
     
+    if len(fastaParser.assembly_gaps)>0:
+        Parameters.askUserForAssemblyGapInfo()
+        
+    
     print("Converting features")
     fconverter = FeatureConverter()
     fconverter.convertFeatures(features)
+    fconverter.addAssemblyGaps(features, fastaParser.assembly_gaps)
     
     ddbjwriter.writeHeader()
-    
-    
-    
     ddbjwriter.writeFeatures(features, fasta_headers)
     
     print("Conversion finished...")

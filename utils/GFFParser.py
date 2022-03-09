@@ -210,9 +210,6 @@ class GFFParser:
         placeholder_feature.strand = strand
         placeholder_feature.score = '.'
         placeholder_feature.phase = '.'
-        #placeholder_feature.attributes["organism"] = DDBJWriter.source_attributes["organism"]
-        #placeholder_feature.attributes["mol_type"] = DDBJWriter.source_attributes["mol_type"]
-        
         
         if not children_contain_gene_feature:
             placeholder_feature.gfftype = "gene"
