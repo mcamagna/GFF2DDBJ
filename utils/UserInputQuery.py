@@ -103,8 +103,8 @@ class UserInputQuery:
     
     def askForGapLength(self):
         print("\nIs the assembly gap length known?")
-        responses = {"1":"unknown", 
-                      "2":"known", 
+        responses = {"1":"known", 
+                      "2":"unknown", 
                       "0": 'EXIT'}
         for key in responses.keys():
             print("  ["+str(key)+"] "+responses[key])

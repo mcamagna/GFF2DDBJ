@@ -43,23 +43,22 @@ class Feature:
             allchildren.update(child.getAllDownstreamChildren())
         return allchildren
     
-    
-    def getAllDownstreamCDS(self):
-        allcds = set()
+    def getAllDownstreamOfType(self, gfftypes):
+        if not isinstance(gfftypes, list) and not isinstance(gfftypes, set):
+            gfftypes = [gfftypes]
+            
+        to_return = set()
         for child in self.children:
-            if child.gfftype.lower()=="cds":
-                allcds.add(child)
-                allcds.update(child.getAllDownstreamCDS())
-        return allcds
-    
+            if child.gfftype in gfftypes:
+                to_return.add(child)
+                to_return.update(child.getAllDownstreamOfType(gfftypes))
+        return to_return
+        
+    def getAllDownstreamCDS(self):
+        return self.getAllDownstreamOfType(["CDS", "cds"])
     
     def getAllDownstreamMRNA(self):
-        allmrna = set()
-        for child in self.children:
-            if child.gfftype.lower()=="mrna":
-                allmrna.add(child)
-                allmrna.update(child.getAllDownstreamCDS())
-        return allmrna
+        return self.getAllDownstreamOfType(["mRNA", "MRNA", "mrna"])
     
     def sortChildrenByPosition(self):
         self.children.sort(key=lambda x: x.start)

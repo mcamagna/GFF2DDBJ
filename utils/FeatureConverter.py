@@ -263,8 +263,15 @@ class FeatureConverter:
                     cs = "1"
                     feature.attributes["codon_start"] = cs
     
-
-        
+    def _addExonIntronNumbers(self, gff_feature_dict):
+        for key, feature in gff_feature_dict.items():
+            if feature.gfftype == "gene":
+                elements = list(feature.getAllDownstreamOfType(["exon", "intron"]))
+                elements.sort(key=lambda x: x.start, reverse=True if feature.strand == "-" else False)
+                for i, element in enumerate(elements):
+                    element.attributes["number"] = str(i+1)
+               
+                
     def convertFeatures(self, gff_feature_dict):
         len_before = len(gff_feature_dict)
         
@@ -277,10 +284,13 @@ class FeatureConverter:
         self._checkValidityOfQualifiers(gff_feature_dict)
         self._removeEntriesWithouthQualifiers(gff_feature_dict)
         
-        
         #Braker2 was found to annotate the same region multiple times, with slightly different ID's
         #after conversion, it is possible that we end up with identical features. Let's remove them
         self._removeDuplicateFeatures(gff_feature_dict)
+        #exon/intron numbers are added after removing of duplicates has succeeded
+        #otherwise they would receive different hashes
+        self._addExonIntronNumbers(gff_feature_dict)
+        
         
         len_after = len(gff_feature_dict)
         removed_feature_count = len_before-len_after
