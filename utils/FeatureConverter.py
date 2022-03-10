@@ -151,9 +151,10 @@ class FeatureConverter:
                 to_remove_keys.add(key)
                 #let's transfer the gene annotation to all downstream CDS and mRNA's
                 child_features_to_augment = set()
-                child_features_to_augment.update(feature.getAllDownstreamCDS())
-                child_features_to_augment.update(feature.getAllDownstreamMRNA())
-                
+                #Actually, UME gives errors if the intron and exons dont have the gene name either
+                #child_features_to_augment.update(feature.getAllDownstreamCDS())
+                #child_features_to_augment.update(feature.getAllDownstreamMRNA())
+                child_features_to_augment.update(feature.getAllDownstreamChildren())
                 for child in child_features_to_augment:
                     #copy all gene attributes from to CDS/mRNA if no conflicting attribute is present
                     for gene_attr in feature.attributes.keys():
@@ -179,20 +180,47 @@ class FeatureConverter:
             gaplist = gaps[contig_name]
             for i, gap in enumerate(gaplist):
                 attr = Parameters.assembly_gap_attributes.copy()
-                if attr["estimated_length"] =="known":
-                    attr["estimated_length"] = gap[1]-gap[0]
+                #if attr["estimated_length"] =="known":
+                #    attr["estimated_length"] = str(gap[1]-gap[0])
                 name = contig_name+"_assembly_gap_"+str(i)
                 f = Feature(seqid=contig_name, gfftype="assembly_gap", start=gap[0]+1, end=gap[1], strand="+", attribute_dict=attr)
                 f.parent = gff_feature_dict.get(contig_name)
                 gff_feature_dict.get(contig_name).children.append(f)
                 
                 gff_feature_dict[name] = f
+     
+    def _fixLocusTags(self, gff_feature_dict):
+        """The GFF ID's were converted to locus tags during mapping of qualifiers. However, locus tag naming convention is very strict.
+        The locus tag must be preceded by a locus tag prefix, separated by an underscore. Locus tags are assigned to most subfeatures 
+        of genes and these subfeatures must have the identical locus tag as the corresponding gene. 
+         Note: this function will assign the genes locus tag to all subfeatures, regardless of the type. Invalid assigning of the locus_tag 
+         qualifier will need to be filtered out by _checkValidityOfQualifiers()
+        """
+        prefix = Parameters.locus_attributes["locus_tag_prefix"]
+        need_to_add_prefix = prefix!=""
+        
+        for key, feature in gff_feature_dict.items():
+            if feature.gfftype == 'gene':
+                print(key)
+                locus_tag = feature.attributes.get("locus_tag")
+                if locus_tag is not None:
+                    if need_to_add_prefix:
+                        print(locus_tag)
+                        if "_" in locus_tag:
+                            locus_tag = locus_tag.rsplit("_", maxsplit=1)[1] #remove underscores
+                        locus_tag = locus_tag.split(".", maxsplit=1)[0] #remove dots
+                        locus_tag = prefix+"_"+locus_tag
+                        print(locus_tag)
+                        feature.attributes["locus_tag"] = locus_tag
+                        for child in feature.children:
+                            child.attributes["locus_tag"] = locus_tag
         
     def convertFeatures(self, gff_feature_dict):
         len_before = len(gff_feature_dict)
         
         self._mapGFF_Features(gff_feature_dict)
         self._mapQualifiers(gff_feature_dict)
+        self._fixLocusTags(gff_feature_dict)
         self._removeGeneFeatures(gff_feature_dict)
         self._addSourceFeatures(gff_feature_dict)
         self._checkValidityOfQualifiers(gff_feature_dict)

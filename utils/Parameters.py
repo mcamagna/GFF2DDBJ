@@ -9,6 +9,8 @@ class Parameters:
         Parameters.string = ""
         Parameters.source_attributes = {"organism":None, "mol_type":None}
         Parameters.assembly_gap_attributes = {"estimated_length":None, "gap_type":None, "linkage_evidence":None}
+        Parameters.locus_attributes = {"locus_tag_prefix":None}
+        
         Parameters.keywords = []
     
     @staticmethod
@@ -166,6 +168,9 @@ class Parameters:
             Parameters.source_attributes["organism"] = userinputquery.askUserForOrganism()
         if not Parameters.hasQualifier('mol_type') and Parameters.source_attributes["mol_type"] is None:
             Parameters.source_attributes["mol_type"] = userinputquery.askUserForMolType()
+        
+        if Parameters.locus_attributes["locus_tag_prefix"] is None:
+            Parameters.locus_attributes["locus_tag_prefix"] = userinputquery.askForLocusTagPrefix()
         
         if Parameters.hasCommonParam("KEYWORD", "keyword", "WGS"):
             if not Parameters.hasCommonParam("KEYWORD", 'keyword', "STANDARD_DRAFT"):

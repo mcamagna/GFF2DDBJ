@@ -28,8 +28,28 @@ class UserInputQuery:
         else:
             print("ERROR: Invalid selection... exiting")
             sys.exit(128)
+    
             
-            
+    def askForLocusTagPrefix(self):
+        print("\nPlease specify the locus tag prefix:")
+        print("(3-12 characters, alphanumeric only, must start with a letter)")
+        print("If the GFF already contains the correct locus names, just press enter.")
+        
+        inp = input("\nLocus tag prefix: ")
+        if inp == '':
+            return ""
+        
+        ltp_pattern = r"[a-zA-Z][a-zA-Z0-9]{2,11}"
+        import re
+        m = re.match(ltp_pattern, inp)
+        if m is not None:
+            match_len = m.end()-m.start()
+            if match_len == len(inp):
+                return inp
+        
+        print("ERROR: Invalid locus tag prefix! ... exiting")
+        sys.exit(128) 
+        
     def askForTPA(self):    
         print("\nThe DATATYPE states TPA. One of the following selections must be chosen:")
  

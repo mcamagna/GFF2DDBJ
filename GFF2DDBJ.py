@@ -27,6 +27,7 @@ def main():
     parser.add_argument('--organism', help="Optional: Scientific name of the organism.")
     parser.add_argument('--strain', help="Name of the strain.")
     parser.add_argument('--mol_type', help="Type of molecule used in the sample. If not provided, you will be asked to choose the type if necessary.")
+    parser.add_argument('--locus_tag_prefix', help="A prefix that is attached before each gene name. Must be 3-12 letters long and contain only alphanumeric characters. The first character should be a letter.")
     
     #parser.print_help()
     
@@ -38,7 +39,8 @@ def main():
     Parameters.source_attributes['organism'] = args.organism
     Parameters.source_attributes['mol_type'] = args.mol_type
     Parameters.source_attributes['strain'] = args.strain
-    
+    Parameters.locus_attributes["locus_tag_prefix"] = args.locus_tag_prefix
+        
     if OUTFILE is None:
         OUTFILE = INFILE.replace(".gff3", "").replace(".GFF3", "").replace(".gff", "").replace(".GFF", '')
         OUTFILE += ".ann"

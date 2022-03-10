@@ -49,8 +49,9 @@ class FastaParser:
                 self.headers.append(line)
                 
             else:
-                current_seq_len+= len(line)
-                current_lines.append(line)
+                if not line.startswith("\\\\"): #to ignore the completely unnecessary DDBJ fasta 'end flag'
+                    current_seq_len+= len(line)
+                    current_lines.append(line)
                 
         #Last fasta entry needs to be added        
         current_seq = "".join(current_lines)
