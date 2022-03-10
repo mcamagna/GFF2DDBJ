@@ -78,8 +78,8 @@ def main():
     
     print("Converting features")
     fconverter = FeatureConverter()
-    fconverter.convertFeatures(features)
-    fconverter.addAssemblyGaps(features, fastaParser.assembly_gaps)
+    features = fconverter.convertFeatures(features)
+    features = fconverter.addAssemblyGaps(features, fastaParser.assembly_gaps)
     
     ddbjwriter.writeHeader()
     ddbjwriter.writeFeatures(features, fasta_headers)

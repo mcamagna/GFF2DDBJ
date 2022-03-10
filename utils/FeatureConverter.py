@@ -149,12 +149,8 @@ class FeatureConverter:
         for key, feature in gff_feature_dict.items():
             if feature.gfftype.lower() == "gene":
                 to_remove_keys.add(key)
-                #let's transfer the gene annotation to all downstream CDS and mRNA's
+                #let's transfer the gene annotation to all downstream CDS and mRNA's, introns, exons, etc
                 child_features_to_augment = set()
-                #TODO: remove unused code
-                #Actually, UME gives errors if the intron and exons dont have the gene name either
-                #child_features_to_augment.update(feature.getAllDownstreamCDS())
-                #child_features_to_augment.update(feature.getAllDownstreamMRNA())
                 child_features_to_augment.update(feature.getAllDownstreamChildren())
                 for child in child_features_to_augment:
                     #copy all gene attributes from to CDS/mRNA if no conflicting attribute is present
@@ -187,7 +183,8 @@ class FeatureConverter:
                 gff_feature_dict.get(contig_name).children.append(f)
                 
                 gff_feature_dict[name] = f
-     
+        return gff_feature_dict
+    
     def _fixLocusTags(self, gff_feature_dict):
         """The GFF ID's were converted to locus tags during mapping of qualifiers. However, locus tag naming convention is very strict.
         The locus tag must be preceded by a locus tag prefix, separated by an underscore. Locus tags are assigned to most subfeatures 
@@ -210,7 +207,25 @@ class FeatureConverter:
                         feature.attributes["locus_tag"] = locus_tag
                         for child in feature.children:
                             child.attributes["locus_tag"] = locus_tag
+    
+    
+    def _removeDuplicateFeatures(self, gff_feature_dict):
+        feature_keys_to_remove = set()
+        hash_set = set()
         
+        for key, feature in gff_feature_dict.items():
+            feature.removeDuplicateChildren()
+            
+            h = feature.getHash()
+            if h in hash_set:
+                feature_keys_to_remove.add(key)
+            else:
+                hash_set.add(h)
+        
+        for fkr in feature_keys_to_remove:
+            gff_feature_dict.pop(fkr)
+    
+    
     def convertFeatures(self, gff_feature_dict):
         len_before = len(gff_feature_dict)
         
@@ -222,10 +237,16 @@ class FeatureConverter:
         self._checkValidityOfQualifiers(gff_feature_dict)
         self._removeEntriesWithouthQualifiers(gff_feature_dict)
         
+        #Braker2 was found to annotate the same region multiple times, with slightly different ID's
+        #after conversion, it is possible that we end up with identical features. Let's remove them
+        self._removeDuplicateFeatures(gff_feature_dict)
+        
         len_after = len(gff_feature_dict)
         removed_feature_count = len_before-len_after
         if removed_feature_count>0:
             print(f"Number of invalid GFF entries that will not be converted: {removed_feature_count}")
+        
+        return gff_feature_dict
     
     def _removeEntriesWithouthQualifiers(self, gff_feature_dict):
         to_remove = set()

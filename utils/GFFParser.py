@@ -63,8 +63,32 @@ class Feature:
     
     def sortChildrenByPosition(self):
         self.children.sort(key=lambda x: x.start)
+    
+    def getHash(self):
+        h = "" + self.seqid + '_' + self.source + '_' + self.gfftype 
+        h+= '_' + str(self.start) + '_' + str(self.end)
+        h+= '_' +self.strand
+        attr_items = list(self.attributes.items())
+        attr_items.sort(key=lambda x: x[0])
+        for qualifier, value in attr_items:
+            h+="_"+qualifier+"_"+value        
+        return h
+    
+    def removeDuplicateChildren(self):
+        children_to_remove = []
+        child_hashes = set()
+        for child in self.children:
+            h = child.getHash()
+            
+            if h in child_hashes:
+                children_to_remove.append(child)
+            else:
+                child_hashes.add(h)
+        for ctr in children_to_remove:
+            self.children.remove(ctr)
         
-        
+    
+    
     
     def clone(self):
         f = Feature()
@@ -169,7 +193,6 @@ class GFFParser:
         for placeholder in placeholders:
             self._fixPlaceholder(placeholder)
         
-        #TODO: rebuild parent list
     
            
     def _fixPlaceholder(self, placeholder_feature):
