@@ -59,12 +59,7 @@ class DDBJWriter:
             out.write(s)
         
     
-    def buildLocationString(self, f):
-        """Uses the start/end/strand values to build a location string"""
-        s = str(f.start) + '..'+str(f.end)
-        if f.strand == '-':
-            s= "complement("+s+")"
-        return s
+    
     
     
     def _writeFeature(self, f, isSourceFeature=False):
@@ -81,7 +76,7 @@ class DDBJWriter:
         
         s += f.gfftype
         s += '\t'
-        s += self.buildLocationString(f)
+        s += f.buildLocationString()
         s += '\t'
         i = 0
         

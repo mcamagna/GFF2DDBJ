@@ -2,10 +2,10 @@
 This will help to check whether GFF features are permissable as DDBJ entries and attempt to modify them appropriately.
 @author: Maurizio Camagna
 '''
-from utils.GFFParser import Feature
-from utils.DDBJWriter import DDBJWriter
+
 from utils.FastaParser import FastaParser
 from utils.Parameters import Parameters
+from utils.Feature import Feature
 
 class FeatureConverter:
     
@@ -202,10 +202,13 @@ class FeatureConverter:
                     if need_to_add_prefix:
                         #remove underscores
                         if "_g" in locus_tag: #braker2 genes are named this way
-                            locus_tag = locus_tag.rsplit("_g", maxsplit=1)[1] 
+                            locus_tag = locus_tag.rsplit("_g", maxsplit=1)[1]
+                            locus_tag = locus_tag.split(".", maxsplit=1)[0] #remove dots
+                            #pad with zeros
+                            locus_tag = ("0"*(8-len(locus_tag)))+locus_tag 
                         elif "_" in locus_tag:
                             locus_tag = locus_tag.rsplit("_", maxsplit=1)[1]
-                        locus_tag = locus_tag.split(".", maxsplit=1)[0] #remove dots
+                            locus_tag = locus_tag.split(".", maxsplit=1)[0] #remove dots
                         locus_tag = prefix+"_"+locus_tag
                         feature.attributes["locus_tag"] = locus_tag
                         for child in feature.children:

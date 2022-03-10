@@ -3,107 +3,9 @@ Braker2 generated GFF files lack the gene feature. We'll try to parse the file a
 @author: Maurizio Camagna
 '''
 from utils.DDBJWriter import DDBJWriter
+from utils.Feature import Feature
+from utils.CompoundFeature import CompoundFeature
 
-class Feature:
-    
-    def __init__(self, seqid="", source="", gfftype="", start=None, end=None, score=None, strand="", phase="", attribute_dict=None):
-        self.seqid = seqid
-        self.source = source
-        self.gfftype = gfftype
-        self.start = start
-        self.end = end
-        self.score = score
-        self.strand = strand
-        self.phase = phase
-        self.attributes = attribute_dict
-        if self.attributes is None:
-            self.attributes = dict()
-        
-        self.parent = None #reference to the parent feature object
-        self.children = [] #list of feature objects belonging to this feature
-    
-    def addAttribute(self, name, value):
-        self.attributes[name] = str(value)
-    
-    def getAttribute(self, name):
-        return self.attributes.get(name)
-    
-    def getParent(self):
-        return self.parent
-    
-    def getUltimateParent(self):
-        if self.parent is not None:
-            return self.parent.getUltimateParent()
-        return self
-    
-    def getAllDownstreamChildren(self):
-        allchildren = set()
-        for child in self.children:
-            allchildren.add(child)
-            allchildren.update(child.getAllDownstreamChildren())
-        return allchildren
-    
-    def getAllDownstreamOfType(self, gfftypes):
-        if not isinstance(gfftypes, list) and not isinstance(gfftypes, set):
-            gfftypes = [gfftypes]
-            
-        to_return = set()
-        for child in self.children:
-            if child.gfftype in gfftypes:
-                to_return.add(child)
-                to_return.update(child.getAllDownstreamOfType(gfftypes))
-        return to_return
-        
-    def getAllDownstreamCDS(self):
-        return self.getAllDownstreamOfType(["CDS", "cds"])
-    
-    def getAllDownstreamMRNA(self):
-        return self.getAllDownstreamOfType(["mRNA", "MRNA", "mrna"])
-    
-    def sortChildrenByPosition(self):
-        self.children.sort(key=lambda x: x.start)
-    
-    def getHash(self):
-        h = "" + self.seqid + '_' + self.source + '_' + self.gfftype 
-        h+= '_' + str(self.start) + '_' + str(self.end)
-        h+= '_' +self.strand
-        attr_items = list(self.attributes.items())
-        attr_items.sort(key=lambda x: x[0])
-        for qualifier, value in attr_items:
-            h+="_"+str(qualifier)+"_"+str(value)
-        return h
-    
-    def removeDuplicateChildren(self):
-        children_to_remove = []
-        child_hashes = set()
-        for child in self.children:
-            h = child.getHash()
-            
-            if h in child_hashes:
-                children_to_remove.append(child)
-            else:
-                child_hashes.add(h)
-        for ctr in children_to_remove:
-            self.children.remove(ctr)
-        
-    
-    
-    
-    def clone(self):
-        f = Feature()
-        import copy
-        f.seqid = self.seqid
-        f.source = self.source
-        f.gfftype = self.gfftype
-        f.start = self.start
-        f.end = self.end
-        f.score = self.score
-        f.strand = self.strand
-        f.phase = self.phase
-        f.attributes = copy.deepcopy(self.attributes)    
-        f.parent = self.parent
-        f.children = self.children
-        return f
     
     
 class GFFParser:
@@ -115,7 +17,7 @@ class GFFParser:
     
         self._parseGFF()
         self._connectFeatures()
-    
+        self._mergeCDSSequences()
     
     def _parseGFF(self):
         """Iterates through a GFF file and extracts all features."""
@@ -238,6 +140,9 @@ class GFFParser:
         placeholder_feature.phase = '.'
         
         if not children_contain_gene_feature:
+            #TODO: Actually the placeholder is probably a transcript, not a gene.
+            #We can treat it as a gene, since these transcripts will later be merged anyways,
+            #but for compatibility with non-braker2 gff files, this needs to be fixed
             placeholder_feature.gfftype = "gene"
         else:
             #The placeholder contains a gene feature as child.
@@ -253,4 +158,34 @@ class GFFParser:
             self.features.pop(placeholder_feature.attributes.get("ID"))
         
            
+    def _mergeCDSSequences(self):
+        """GFF files write CDS sequences as separate entries. For DDBJ, we will need to merge them into one single entry,
+        so that we can then get the location as join(x..y,X..Y)"""
+        
+        keys_to_remove = set()
+        entries_to_add = []
+        
+        for key, feature in self.features.items():
+            if feature.gfftype == "gene":
+                cds_list = feature.getAllDownstreamCDS()
+                #DEBUG
+                print(key)
+                for cds in cds_list:
+                    print("  ", cds.getAttribute("ID"))
+                
+                if len(cds_list)>0:
+                    compound_feature = CompoundFeature(cds_list)
+                    entries_to_add.append((compound_feature.getAttribute("ID"), compound_feature))
+                    for cds in cds_list:
+                        feature.children.remove(cds)
+                        keys_to_remove.add(cds.attributes["ID"])
+                    feature.children.append(compound_feature)
+    
+        for ktr in keys_to_remove:
+            self.features.pop(ktr)
+            
+        for eta in entries_to_add:
+            self.features[eta[0]] = eta[1]
+    
+    
     
