@@ -200,8 +200,11 @@ class FeatureConverter:
                 locus_tag = feature.attributes.get("locus_tag")
                 if locus_tag is not None:
                     if need_to_add_prefix:
-                        if "_" in locus_tag:
-                            locus_tag = locus_tag.rsplit("_", maxsplit=1)[1] #remove underscores
+                        #remove underscores
+                        if "_g" in locus_tag: #braker2 genes are named this way
+                            locus_tag = locus_tag.rsplit("_g", maxsplit=1)[1] 
+                        elif "_" in locus_tag:
+                            locus_tag = locus_tag.rsplit("_", maxsplit=1)[1]
                         locus_tag = locus_tag.split(".", maxsplit=1)[0] #remove dots
                         locus_tag = prefix+"_"+locus_tag
                         feature.attributes["locus_tag"] = locus_tag
