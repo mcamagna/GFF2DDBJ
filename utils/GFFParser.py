@@ -61,6 +61,10 @@ class Feature:
                 allmrna.update(child.getAllDownstreamCDS())
         return allmrna
     
+    def sortChildrenByPosition(self):
+        self.children.sort(key=lambda x: x.start)
+        
+        
     
     def clone(self):
         f = Feature()

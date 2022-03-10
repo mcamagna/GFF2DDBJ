@@ -10,7 +10,7 @@ class Parameters:
         Parameters.source_attributes = {"organism":None, "mol_type":None}
         Parameters.assembly_gap_attributes = {"estimated_length":None, "gap_type":None, "linkage_evidence":None}
         Parameters.locus_attributes = {"locus_tag_prefix":None}
-        
+        Parameters.sort_features = True
         Parameters.keywords = []
     
     @staticmethod

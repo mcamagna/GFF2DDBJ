@@ -115,6 +115,9 @@ class DDBJWriter:
             if source_feature is None:
                 #print(f"Warning: {sk} does not have a source feature.")
                 continue
+            if Parameters.sort_features:
+                source_feature.sortChildrenByPosition()
+                
             self._writeFeature(source_feature, isSourceFeature=True)
             for child in source_feature.children:
                 self._writeFeature(child)
