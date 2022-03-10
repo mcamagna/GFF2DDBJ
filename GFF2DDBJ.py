@@ -55,8 +55,8 @@ def main():
     else:
         checkFilepaths([INFILE, FASTAFILE, HEADERFILE])
         Parameters.parseHeaderFile(HEADERFILE)
-        print("The COMMON header currently contains these values:")
-        Parameters.printCommonParameters()
+        #print("The COMMON header currently contains these values:")
+        #Parameters.printCommonParameters()
     Parameters.askUserForRequiredParameters()
     
     ddbjwriter = DDBJWriter(OUTFILE)

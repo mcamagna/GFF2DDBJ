@@ -239,7 +239,6 @@ class FeatureConverter:
         for key, feature in gff_feature_dict.items():
             if feature.gfftype == "start_codon":
                 strand = feature.strand
-                print(key, feature.start, feature.end)
                 cds_list = list(feature.parent.getAllDownstreamCDS())
                 distances = [abs(cds.start - feature.start) if strand == "+" else abs(cds.end - feature.end) for cds in cds_list]
                 if 0 in distances:
