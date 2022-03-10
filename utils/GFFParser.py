@@ -71,7 +71,7 @@ class Feature:
         attr_items = list(self.attributes.items())
         attr_items.sort(key=lambda x: x[0])
         for qualifier, value in attr_items:
-            h+="_"+qualifier+"_"+value        
+            h+="_"+str(qualifier)+"_"+str(value)
         return h
     
     def removeDuplicateChildren(self):

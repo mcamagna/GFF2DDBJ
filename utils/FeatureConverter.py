@@ -229,9 +229,47 @@ class FeatureConverter:
             gff_feature_dict.pop(fkr)
     
     
+    def _addAdditionalCDSQualifiers(self, gff_feature_dict):
+        """DDBJ annotations require CDS features to contain transl_table and codon_start.
+        Braker2 provides a special feature 'start_codon' which is not supported by DDBJ.
+        We'll have to parse the 'start_codon' features and conclude the correct 'codon_start' 
+        value for a corresponding CDS feature
+        transl_table will always be set to 1 if no other value was provided via the command line.
+        """
+        for key, feature in gff_feature_dict.items():
+            if feature.gfftype == "start_codon":
+                strand = feature.strand
+                print(key, feature.start, feature.end)
+                cds_list = list(feature.parent.getAllDownstreamCDS())
+                distances = [abs(cds.start - feature.start) if strand == "+" else abs(cds.end - feature.end) for cds in cds_list]
+                if 0 in distances:
+                    #found start codon on frame 1 of the current CDS. 
+                    #We can abort, since the default value of 1 will be assigned later anyways
+                    continue
+                else:
+                    argmin = min(range(len(distances)), key=lambda x: distances[x])
+                    distance = distances[argmin]
+                    while distance >2:
+                        distance -=3
+                    cds_list[argmin].attributes['codon_start'] = str(distance+1)
+                    
+        for key, feature in gff_feature_dict.items():
+            if feature.gfftype == "CDS":
+                tt = feature.attributes.get("transl_table")
+                if tt is None:
+                    tt = "1"
+                    feature.attributes["transl_table"] = tt
+                cs = feature.attributes.get("codon_start")
+                if cs is None:
+                    cs = "1"
+                    feature.attributes["codon_start"] = cs
+    
+
+        
     def convertFeatures(self, gff_feature_dict):
         len_before = len(gff_feature_dict)
         
+        self._addAdditionalCDSQualifiers(gff_feature_dict)
         self._mapGFF_Features(gff_feature_dict)
         self._mapQualifiers(gff_feature_dict)
         self._fixLocusTags(gff_feature_dict)
@@ -239,6 +277,7 @@ class FeatureConverter:
         self._addSourceFeatures(gff_feature_dict)
         self._checkValidityOfQualifiers(gff_feature_dict)
         self._removeEntriesWithouthQualifiers(gff_feature_dict)
+        
         
         #Braker2 was found to annotate the same region multiple times, with slightly different ID's
         #after conversion, it is possible that we end up with identical features. Let's remove them
