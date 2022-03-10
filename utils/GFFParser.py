@@ -168,10 +168,6 @@ class GFFParser:
         for key, feature in self.features.items():
             if feature.gfftype == "gene":
                 cds_list = feature.getAllDownstreamCDS()
-                #DEBUG
-                print(key)
-                for cds in cds_list:
-                    print("  ", cds.getAttribute("ID"))
                 
                 if len(cds_list)>0:
                     compound_feature = CompoundFeature(cds_list)
