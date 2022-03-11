@@ -19,6 +19,9 @@ class Feature:
     
     def buildLocationString(self):
         """Uses the start/end/strand values to build a location string"""
+        if self.start == self.end:
+            return str(self.start)
+        
         s = str(self.start) + '..'+str(self.end)
         if self.strand == '-':
             s= "complement("+s+")"
