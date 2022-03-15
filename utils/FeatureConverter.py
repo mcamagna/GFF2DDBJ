@@ -267,12 +267,21 @@ class FeatureConverter:
                     feature.attributes["codon_start"] = cs
     
     def _addExonIntronNumbers(self, gff_feature_dict):
+        """Exons and introns need to be numbered by occurence in 5->3 direction."""
+        #We will first need to regroup the exons and introns by their corresponding gene tags
+        gene_groups = dict()
         for key, feature in gff_feature_dict.items():
-            if feature.gfftype == "gene":
-                elements = list(feature.getAllDownstreamOfType(["exon", "intron"]))
-                elements.sort(key=lambda x: x.start, reverse=True if feature.strand == "-" else False)
-                for i, element in enumerate(elements):
-                    element.attributes["number"] = str(i+1)
+            if feature.gfftype == "exon" or feature.gfftype == "intron":
+                gene_group = gene_groups.get(feature.getAttribute("gene"))
+                if gene_group is None:
+                    gene_group = []
+                    gene_groups[feature.getAttribute("gene")] = gene_group
+                gene_group.append(feature)
+                
+        for group in gene_groups.values():
+            group.sort(key=lambda x: x.start, reverse=True if group[0].strand == "-" else False)
+            for i, element in enumerate(group):
+                element.attributes["number"] = str(i+1)
                
                 
     def convertFeatures(self, gff_feature_dict):
