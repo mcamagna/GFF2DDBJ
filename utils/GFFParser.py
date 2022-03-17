@@ -6,6 +6,8 @@ from utils.DDBJWriter import DDBJWriter
 from utils.Feature import Feature
 from utils.Parameters import Parameters
 from utils.CompoundFeature import CompoundFeature
+from utils.TruncatedEndFeature import TruncatedEndFeature
+from utils.TruncatedStartFeature import TruncatedStartFeature
 
     
     
@@ -19,6 +21,7 @@ class GFFParser:
         self._parseGFF()
         self._connectFeatures()
         self._mergeCDSSequences()
+        self._detectIncompleteCDS()
     
     def _parseGFF(self):
         """Iterates through a GFF file and extracts all features."""
@@ -161,6 +164,7 @@ class GFFParser:
             self.parentFeatures.append(new_parent)
             self.features.pop(placeholder_feature.attributes.get("ID"))
         
+   
            
     def _mergeCDSSequences(self):
         """GFF files write CDS sequences as separate entries. For DDBJ, we will need to merge them into one single entry,
@@ -189,3 +193,58 @@ class GFFParser:
     
     
     
+    
+    def _detectIncompleteCDS(self):
+        """In most GFF files, the start and stop codons are equal to the first and last codon of a CDS.
+        However in Breaker2 files, the special features start_codon and stop_codon are provided.
+        If i.e. the start_codon is missing, then this means that the CDS sequence is incomplete and this
+        needs to be annotated differently in DDBJ annotations.
+        """
+        to_replace=[]
+        
+        for key, feature in self.features.items():
+            has_startcodon = False
+            has_stopcodon = False
+            
+            if feature.gfftype == 'CDS':
+                cds = feature
+                parent = feature.parent
+                if parent is None:
+                    continue
+                
+                startcodons = parent.getAllDownstreamOfType("start_codon")
+                if len(startcodons) > 0:
+                    has_startcodon = True
+                
+                stopcodons = parent.getAllDownstreamOfType("stop_codon")
+                if len(stopcodons) > 0:
+                    has_stopcodon = True
+                
+                if len(stopcodons)>1 or len(startcodons)>1:
+                    print("ERROR: Multiple start- or stopcodons found for CDS")
+                
+                #if has both start and stop we don't have to fix anything
+                #if it has neither, it is apparently not part of the GFF file (and: we couldn't fix anything anyways in that case)
+                if has_startcodon == has_stopcodon:
+                    continue
+                    
+                if has_startcodon: #the end of the CDS is missing
+                    newfeature = TruncatedEndFeature.cloneFeature(cds)
+                    to_replace.append((key, newfeature))
+                
+                elif has_stopcodon:
+                    newfeature = TruncatedStartFeature.cloneFeature(cds)
+                    to_replace.append((key, newfeature))
+            
+        for key, newfeature in to_replace:
+            oldfeature = self.features[key]
+            if oldfeature.parent is not None:
+                oldfeature.parent.children.remove(oldfeature)
+                oldfeature.parent.children.append(newfeature)
+                
+            self.features[key] = newfeature
+            
+                
+                
+                
+                

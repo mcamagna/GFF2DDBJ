@@ -167,6 +167,7 @@ class FeatureConverter:
     
     
     def addAssemblyGaps(self, gff_feature_dict, gaps):
+        """Adds assembly gaps found in the FASTA file to the feature_dict"""
         for contig_name in gaps.keys():
             gaplist = gaps[contig_name]
             for i, gap in enumerate(gaplist):
@@ -175,6 +176,7 @@ class FeatureConverter:
                 f = Feature(seqid=contig_name, gfftype="assembly_gap", start=gap[0]+1, end=gap[1], strand="+", attribute_dict=attr)
                 f.parent = gff_feature_dict.get(contig_name)
                 gff_feature_dict.get(contig_name).children.append(f)
+                #TODO: check if gap is within CDS and split the CDS if so
                 
                 gff_feature_dict[name] = f
         return gff_feature_dict

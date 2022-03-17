@@ -25,7 +25,13 @@ class CompoundFeature(Feature):
         else:
             s=""
             for m in self.members:
-                s+= str(m.start) + '..'+str(m.end) + ","
+                ms = m.buildLocationString() #need to use the location string, not m.start..m.end since the feature could be truncated
+                #only keep the content inside the bracket
+                if '(' in ms:
+                    ms = ms.split("(", maxsplit=1)[1]
+                    ms = ms.split(")", maxsplit=1)[0]
+                #s+= str(m.start) + '..'+str(m.end) + ","
+                s+= ms+","
             s = s[0:-1] #remove last comma
             s = "join("+s+")"
             if self.strand == '-':
