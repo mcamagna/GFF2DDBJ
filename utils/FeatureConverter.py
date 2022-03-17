@@ -88,9 +88,9 @@ class FeatureConverter:
             self.ddbj_qualifier_mappings[qualifier.lower().replace("_", "-")] = qualifier
             self.ddbj_qualifier_mappings[qualifier.lower().replace("_", "")] = qualifier
         
-        self.ddbj_qualifier_mappings["ID"] = "locus_tag"
-        self.ddbj_qualifier_mappings["id"] = "locus_tag"
-        self.ddbj_qualifier_mappings["Id"] = "locus_tag"
+        #self.ddbj_qualifier_mappings["ID"] = "locus_tag"
+        #self.ddbj_qualifier_mappings["id"] = "locus_tag"
+        #self.ddbj_qualifier_mappings["Id"] = "locus_tag"
         
     
     def _addSourceFeatures(self, gff_feature_dict):
@@ -157,12 +157,6 @@ class FeatureConverter:
                     for gene_attr in feature.attributes.keys():
                         if gene_attr not in child.attributes.keys():
                             child.attributes[gene_attr] = feature.attributes[gene_attr]
-                    #add the 'gene' qualifier to the child.
-                    if "gene" not in child.attributes.keys():
-                        if "standard_name" in feature.attributes.keys():
-                            child.attributes["gene"] = feature.attributes["standard_name"]
-                        elif "locus_tag" in feature.attributes.keys():
-                            child.attributes["gene"] = feature.attributes["locus_tag"]
                             
                 #let's dissolve the child/parent relationships for the gene node
                 for child in feature.children:
@@ -185,10 +179,11 @@ class FeatureConverter:
                 gff_feature_dict[name] = f
         return gff_feature_dict
     
-    def _fixLocusTags(self, gff_feature_dict):
-        """The GFF ID's were converted to locus tags during mapping of qualifiers. However, locus tag naming convention is very strict.
+    def _fixLocusTagsAndGeneNames(self, gff_feature_dict):
+        """The DDBJ locus tag naming convention is very strict.
         The locus tag must be preceded by a locus tag prefix, separated by an underscore. Locus tags are assigned to most subfeatures 
-        of genes and these subfeatures must have the identical locus tag as the corresponding gene. 
+        of genes and these subfeatures must have the identical locus tag as the corresponding gene BUT the tag cannot be the same as the gene name.
+        Also, in case all subfeatures share the same locus_tag and have a gene qualifier, then the locus_tag should be removed in favor of the gene name.
          Note: this function will assign the genes locus tag to all subfeatures, regardless of the type. Invalid assigning of the locus_tag 
          qualifier will need to be filtered out by _checkValidityOfQualifiers()
         """
@@ -198,20 +193,33 @@ class FeatureConverter:
         for key, feature in gff_feature_dict.items():
             if feature.gfftype == 'gene':
                 locus_tag = feature.attributes.get("locus_tag")
+                if locus_tag is None:
+                    #need to build a locus tag from the gene name
+                    if Parameters.isBreaker2_file:
+                        locus_tag = feature.getAttribute("gene")
+                        if '_g' in locus_tag:
+                            locus_tag = locus_tag.rsplit("_g", maxsplit=1)[1]
+                            locus_tag = locus_tag.split(".")[0]
+                            #fix breaker2 gene name:
+                            feature.attributes['gene'] = 'g'+locus_tag
+                        
                 if locus_tag is not None:
                     if need_to_add_prefix:
-                        #remove underscores
-                        if "_g" in locus_tag: #braker2 genes are named this way
-                            locus_tag = locus_tag.rsplit("_g", maxsplit=1)[1]
-                            locus_tag = locus_tag.split(".", maxsplit=1)[0] #remove dots
-                            #pad with zeros
-                            locus_tag = ("0"*(8-len(locus_tag)))+locus_tag 
-                        elif "_" in locus_tag:
+                        #remove underscores since they are not permissible
+                        if "_" in locus_tag:
                             locus_tag = locus_tag.rsplit("_", maxsplit=1)[1]
-                            locus_tag = locus_tag.split(".", maxsplit=1)[0] #remove dots
+                            
+                        if Parameters.isBreaker2_file:
+                            #pad with zeros
+                            locus_tag = ("0"*(8-len(locus_tag)))+locus_tag
+                            
                         locus_tag = prefix+"_"+locus_tag
                         feature.attributes["locus_tag"] = locus_tag
                         for child in feature.children:
+                            #We will assign both gene and locus tag at this point.
+                            #During the _checkValidityOfQualifiers step, the correct choice
+                            #the locus tag may be removed depending on the circumstances.
+                            child.attributes["gene"] = feature.attributes["gene"]
                             child.attributes["locus_tag"] = locus_tag
     
     
@@ -290,7 +298,7 @@ class FeatureConverter:
         self._addAdditionalCDSQualifiers(gff_feature_dict)
         self._mapGFF_Features(gff_feature_dict)
         self._mapQualifiers(gff_feature_dict)
-        self._fixLocusTags(gff_feature_dict)
+        self._fixLocusTagsAndGeneNames(gff_feature_dict)
         self._removeGeneFeatures(gff_feature_dict)
         self._addSourceFeatures(gff_feature_dict)
         self._checkValidityOfQualifiers(gff_feature_dict)
@@ -322,6 +330,7 @@ class FeatureConverter:
         [gff_feature_dict.pop(r) for r in to_remove]
         
     def _checkValidityOfQualifiers(self, gff_feature_dict):
+        
         for fkey in gff_feature_dict.keys():
             gff_feature = gff_feature_dict[fkey]
             filtered_attributes = dict()
@@ -329,6 +338,10 @@ class FeatureConverter:
                 if qualifier in self.ddbj_features[gff_feature.gfftype]["Mandatory"] or qualifier in self.ddbj_features[gff_feature.gfftype]["Optional"]:
                     filtered_attributes[qualifier] = gff_feature.attributes[qualifier]
             gff_feature.attributes = filtered_attributes
+            
+            #If both gene and locus_tag qualifiers are present, keep only the gene qualifier
+            if gff_feature.attributes.get("gene") is not None and gff_feature.attributes.get("locus_tag") is not None:
+                gff_feature.attributes.pop('locus_tag')
             
             all_mandatory_present = True
             for mandatory_qualifier in self.ddbj_features[gff_feature.gfftype]["Mandatory"]:
@@ -341,6 +354,7 @@ class FeatureConverter:
                 
                 
     def _mapQualifiers(self, gff_feature_dict):
+        """Maps/converts GFF qualifiers to DDBJ qualifiers if possible and removes invalid qualifiers otherwise """
         invalid_qualifiers = set()
         
         for fkey in gff_feature_dict.keys():
@@ -348,7 +362,15 @@ class FeatureConverter:
             converted_attributes = dict()
             
             for qualifier in gff_feature.attributes.keys():
-                converted_qualifier = self._convertQualifier(qualifier)
+                #Special case: GFF ID's are invalid DDBJ qualifiers, and would be removed,
+                #however, we do need to keep this information for genes, since the gene name is required
+                #to be passed to child nodes and also for the locus_tag.
+                converted_qualifier = None
+                if gff_feature.gfftype.lower() == "gene" and qualifier.upper() == "ID" and not gff_feature.hasAttribute("gene"):
+                    converted_qualifier = "gene"
+                else:
+                    converted_qualifier = self._convertQualifier(qualifier)
+                
                 if converted_qualifier is None:
                     invalid_qualifiers.add(qualifier)
                 else:
@@ -358,7 +380,7 @@ class FeatureConverter:
             
             
     def _convertQualifier(self, gff_qualifier):
-        """"""
+        """Looks up GFF qualifier names in the ddbj_qualifier_mappings dict and returns the matching DDBJ qualifier."""
         hit = self.ddbj_qualifier_mappings.get(gff_qualifier)
         if hit is None:
             hit = self.ddbj_qualifier_mappings.get(gff_qualifier.lower())

@@ -33,6 +33,15 @@ class Feature:
     def getAttribute(self, name):
         return self.attributes.get(name)
     
+    def hasAttribute(self, name, case_sensitive=False):
+        """Checks whether the feature has a given attribute."""
+        if not case_sensitive:
+            name = name.upper()
+            return name.upper() in [k.upper() for k in self.attributes.keys()]
+        else:
+            return k in self.attributes.keys()
+        
+            
     def getParent(self):
         return self.parent
     

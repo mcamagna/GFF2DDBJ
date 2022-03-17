@@ -11,6 +11,7 @@ class Parameters:
         Parameters.assembly_gap_attributes = {"estimated_length":None, "gap_type":None, "linkage_evidence":None}
         Parameters.locus_attributes = {"locus_tag_prefix":None}
         Parameters.sort_features = True
+        Parameters.isBreaker2_file = False
         Parameters.keywords = []
     
     @staticmethod

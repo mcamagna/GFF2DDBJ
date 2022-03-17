@@ -4,6 +4,7 @@ Braker2 generated GFF files lack the gene feature. We'll try to parse the file a
 '''
 from utils.DDBJWriter import DDBJWriter
 from utils.Feature import Feature
+from utils.Parameters import Parameters
 from utils.CompoundFeature import CompoundFeature
 
     
@@ -43,6 +44,9 @@ class GFFParser:
             strand=spl[6]
             phase=spl[7]
             attributes = spl[8].split(";")
+            
+            if not Parameters.isBreaker2_file and source.upper() == "AUGUSTUS":
+                Parameters.isBreaker2_file = True
             
             feature = Feature(seqid=seqid, source=source, gfftype=gfftype, start=start, end=end, score=score, strand=strand,phase=phase)
             
