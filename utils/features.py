@@ -83,7 +83,7 @@ class Feature:
         return self.getAllDownstreamOfType(["mRNA", "MRNA", "mrna"])
     
     def sortChildrenByPosition(self):
-        self.children.sort(key=lambda x: x.start)
+        self.children.sort(key=lambda x: (x.start, x.end))
     
     def getHash(self):
         h = "" + self.seqid + '_' + self.source + '_' + self.gfftype 
@@ -195,6 +195,8 @@ class CompoundFeature(Feature):
         left.members = left_members
         right = self.clone()
         right.members = right_members
+        left.end = splitstart-1
+        right.start = splitend+1
         return [left, right]
     
     
