@@ -296,6 +296,10 @@ class FeatureConverter:
      
     def _splitCDSWithGaps(self, gff_feature_dict):
         """Finds assembly_gaps that lie within the bounds of a CDS, and splits the CDS into two pieces"""
+        
+        features_to_add = []
+        keys_to_remove = set()
+        
         for key, feature in gff_feature_dict.items():
             if feature.gfftype == 'source':
                 cds_list = list(feature.getAllDownstreamOfType("CDS"))
@@ -315,8 +319,7 @@ class FeatureConverter:
                     elif gap.end < cds.start:
                         gap_index +=1
                     else:
-                        #print(f"CDS: {cds.start}-{cds.end}\nGAP:{gap.start}-{gap.end}")
-                        print(f"CDS: {cds.buildLocationString()}\nGAP:{gap.buildLocationString()}")
+                        #print(f"CDS: {cds.buildLocationString()}\nGAP:{gap.buildLocationString()}")
                         #compound CDS's don't necessarily need a split, since the gap may lie inside an intron
                         split_required = False
                         if isinstance(cds, CompoundFeature):
@@ -329,12 +332,41 @@ class FeatureConverter:
                             split_required = True
                             
                         if split_required:
-                            print("Split required!")
+                            #print("Split required!")
                             split_cdss = cds.split(gap.start, gap.end)
-                            for split_cds in split_cdss:
-                                print(f"\t{split_cds.buildLocationString()}")
+                            left = split_cdss[0]
+                            right = split_cdss[1]
+                            feature.children.remove(cds)
+                            feature.children.append(left)
+                            feature.children.append(right)
                                 
-                    gap_index+=1
+                            #we need the key of the cds feature
+                            cds_keys = [k for k, val in gff_feature_dict.items() if val == cds]
+                            if len(cds_keys)==0:
+                                #the key was not found, because it's a CDS that was previously split and hasn't
+                                #been added to the gff_feature_dict yet
+                                cds_keys = [k for k, val in features_to_add if val == cds]
+                                
+                            cds_key = cds_keys[0]
+                            keys_to_remove.add(cds_key)
+                            features_to_add.append((cds_key+"_l", left))
+                            features_to_add.append((cds_key+"_r", right))
+                            
+                            #also, a single CDS could have multiple gaps. We need to re-generate the cds_list
+                            #since the newly split CDS will now be found via getAllDownstreamOfType
+                            cds_list = list(feature.getAllDownstreamOfType("CDS"))
+                            cds_list.sort(key=lambda x: x.start)
+                            
+                        gap_index+=1
+        
+        for k in keys_to_remove:
+            try:
+                gff_feature_dict.pop(k)
+            except:
+                pass
+            
+        for key, value in features_to_add:
+            gff_feature_dict[key] = value 
                     
     def convertFeatures(self, gff_feature_dict):
         len_before = len(gff_feature_dict)
