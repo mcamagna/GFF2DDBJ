@@ -29,10 +29,10 @@ class Feature:
     
     def split(self, splitstart, splitend):
         """This will split the feature into two pieces, and return two truncated features."""
-        left = TruncatedStartFeature.cloneFeature(self)
-        right = TruncatedEndFeature.cloneFeature(self)
-        left.end = splitstart
-        right.start = splitend
+        left = TruncatedEndFeature.cloneFeature(self)
+        right = TruncatedStartFeature.cloneFeature(self)
+        left.end = splitstart-1
+        right.start = splitend+1
         return [left, right]
     
     def addAttribute(self, name, value):
@@ -147,6 +147,9 @@ class CompoundFeature(Feature):
             children.update(m.children)
         self.children = list(children)
     
+    def clone(self):
+        f = CompoundFeature(self.members)
+        return f
     
     def buildLocationString(self):
         """Uses the start/end/strand values to build a location string"""
@@ -171,8 +174,28 @@ class CompoundFeature(Feature):
         
     def split(self, splitstart, splitend):
         """This will split the feature into two pieces, and return two truncated features."""
-        #TODO:implement
-        return []
+        if len(self.members)==1:
+            splitmember = self.members[0].split(splitstart, splitend)
+            return [splitmember[0], splitmember[1]]
+        
+        left_members = []
+        right_members = []
+        #note: members are already sorted by position
+        for member in self.members:
+            if member.end<splitstart:
+                left_members.append(member)
+            elif member.start>splitend:
+                right_members.append(member)
+            else:
+                splitmember = member.split(splitstart, splitend)
+                left_members.append(splitmember[0])
+                right_members.append(splitmember[1])
+        
+        left = self.clone()
+        left.members = left_members
+        right = self.clone()
+        right.members = right_members
+        return [left, right]
     
     
     
@@ -201,6 +224,23 @@ class TruncatedStartFeature(Feature):
         Feature.__init__(self, seqid="", source="", gfftype="", start=None, end=None, score=None, strand="", phase="", attribute_dict=None)
     
     
+    def clone(self):
+        f = TruncatedStartFeature()
+        import copy
+        f.seqid = self.seqid
+        f.source = self.source
+        f.gfftype = self.gfftype
+        f.start = self.start
+        f.end = self.end
+        f.score = self.score
+        f.strand = self.strand
+        f.phase = self.phase
+        f.attributes = copy.deepcopy(self.attributes)    
+        f.parent = self.parent
+        f.children = self.children
+        return f
+    
+    
     def buildLocationString(self):
         s = "<"+str(self.start) + '..'+str(self.end)
         if self.strand == '-':
@@ -210,8 +250,11 @@ class TruncatedStartFeature(Feature):
     
     def split(self, splitstart, splitend):
         """This will split the feature into two pieces, and return two truncated features."""
-        #TODO:implement
-        return []
+        left = TruncatedBothSidesFeature.cloneFeature(self)
+        right = TruncatedStartFeature.cloneFeature(self)
+        left.end = splitstart-1
+        right.start = splitend+1
+        return [left, right]
     
     
 
@@ -241,6 +284,23 @@ class TruncatedEndFeature(Feature):
     def __init__(self):
         Feature.__init__(self, seqid="", source="", gfftype="", start=None, end=None, score=None, strand="", phase="", attribute_dict=None)
     
+    def clone(self):
+        f = TruncatedEndFeature()
+        import copy
+        f.seqid = self.seqid
+        f.source = self.source
+        f.gfftype = self.gfftype
+        f.start = self.start
+        f.end = self.end
+        f.score = self.score
+        f.strand = self.strand
+        f.phase = self.phase
+        f.attributes = copy.deepcopy(self.attributes)    
+        f.parent = self.parent
+        f.children = self.children
+        return f
+    
+    
     def buildLocationString(self):
         s = str(self.start) + '..'+">"+str(self.end)
         if self.strand == '-':
@@ -250,9 +310,11 @@ class TruncatedEndFeature(Feature):
     
     def split(self, splitstart, splitend):
         """This will split the feature into two pieces, and return two truncated features."""
-        #TODO:implement
-        return []
-    
+        left = TruncatedEndFeature.cloneFeature(self)
+        right = TruncatedBothSidesFeature.cloneFeature(self)
+        left.end = splitstart-1
+        right.start = splitend+1
+        return [left, right]
     
     
 class TruncatedBothSidesFeature(Feature):
@@ -278,6 +340,23 @@ class TruncatedBothSidesFeature(Feature):
     def __init__(self):
         Feature.__init__(self, seqid="", source="", gfftype="", start=None, end=None, score=None, strand="", phase="", attribute_dict=None)
     
+    def clone(self):
+        f = TruncatedBothSidesFeature()
+        import copy
+        f.seqid = self.seqid
+        f.source = self.source
+        f.gfftype = self.gfftype
+        f.start = self.start
+        f.end = self.end
+        f.score = self.score
+        f.strand = self.strand
+        f.phase = self.phase
+        f.attributes = copy.deepcopy(self.attributes)    
+        f.parent = self.parent
+        f.children = self.children
+        return f
+    
+    
     def buildLocationString(self):
         s = '<'+str(self.start) + '..'+">"+str(self.end)
         if self.strand == '-':
@@ -287,5 +366,8 @@ class TruncatedBothSidesFeature(Feature):
     
     def split(self, splitstart, splitend):
         """This will split the feature into two pieces, and return two truncated features."""
-        #TODO:implement
-        return []
+        left = TruncatedBothSidesFeature.cloneFeature(self)
+        right = TruncatedBothSidesFeature.cloneFeature(self)
+        left.end = splitstart-1
+        right.start = splitend+1
+        return [left, right]
