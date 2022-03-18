@@ -3,11 +3,8 @@ Braker2 generated GFF files lack the gene feature. We'll try to parse the file a
 @author: Maurizio Camagna
 '''
 from utils.DDBJWriter import DDBJWriter
-from utils.Feature import Feature
+from utils.features import Feature, CompoundFeature, TruncatedStartFeature, TruncatedEndFeature
 from utils.Parameters import Parameters
-from utils.CompoundFeature import CompoundFeature
-from utils.TruncatedEndFeature import TruncatedEndFeature
-from utils.TruncatedStartFeature import TruncatedStartFeature
 
     
     

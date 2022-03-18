@@ -5,7 +5,7 @@ This will help to check whether GFF features are permissable as DDBJ entries and
 
 from utils.FastaParser import FastaParser
 from utils.Parameters import Parameters
-from utils.Feature import Feature
+from utils.features import Feature, CompoundFeature
 
 class FeatureConverter:
     
@@ -176,11 +176,11 @@ class FeatureConverter:
                 f = Feature(seqid=contig_name, gfftype="assembly_gap", start=gap[0]+1, end=gap[1], strand="+", attribute_dict=attr)
                 f.parent = gff_feature_dict.get(contig_name)
                 gff_feature_dict.get(contig_name).children.append(f)
-                #TODO: check if gap is within CDS and split the CDS if so
-                
                 gff_feature_dict[name] = f
-        return gff_feature_dict
-    
+                
+        self._splitCDSWithGaps(gff_feature_dict)
+        
+        
     def _fixLocusTagsAndGeneNames(self, gff_feature_dict):
         """The DDBJ locus tag naming convention is very strict.
         The locus tag must be preceded by a locus tag prefix, separated by an underscore. Locus tags are assigned to most subfeatures 
@@ -293,7 +293,49 @@ class FeatureConverter:
             for i, element in enumerate(group):
                 element.attributes["number"] = str(i+1)
                
+     
+    def _splitCDSWithGaps(self, gff_feature_dict):
+        """Finds assembly_gaps that lie within the bounds of a CDS, and splits the CDS into two pieces"""
+        for key, feature in gff_feature_dict.items():
+            if feature.gfftype == 'source':
+                cds_list = list(feature.getAllDownstreamOfType("CDS"))
+                cds_list.sort(key=lambda x: x.start)
                 
+                gap_list = list(feature.getAllDownstreamOfType("assembly_gap"))
+                gap_list.sort(key=lambda x: x.start)
+                
+                #we will iterate through the sorted CDS and gap list to find overlaps of CDSs and gaps
+                gap_index = 0
+                cds_index = 0
+                while(gap_index<len(gap_list) and cds_index<len(cds_list)):
+                    cds = cds_list[cds_index]
+                    gap = gap_list[gap_index]
+                    if cds.end < gap.start:
+                        cds_index+=1
+                    elif gap.end < cds.start:
+                        gap_index +=1
+                    else:
+                        #print(f"CDS: {cds.start}-{cds.end}\nGAP:{gap.start}-{gap.end}")
+                        print(f"CDS: {cds.buildLocationString()}\nGAP:{gap.buildLocationString()}")
+                        #compound CDS's don't necessarily need a split, since the gap may lie inside an intron
+                        split_required = False
+                        if isinstance(cds, CompoundFeature):
+                            for subcds in cds.members:
+                                if subcds.end<gap.start or gap.end<subcds.start:
+                                    continue
+                                else:
+                                    split_required = True
+                        else:
+                            split_required = True
+                            
+                        if split_required:
+                            print("Split required!")
+                            split_cdss = cds.split(gap.start, gap.end)
+                            for split_cds in split_cdss:
+                                print(f"\t{split_cds.buildLocationString()}")
+                                
+                    gap_index+=1
+                    
     def convertFeatures(self, gff_feature_dict):
         len_before = len(gff_feature_dict)
         
@@ -316,8 +358,8 @@ class FeatureConverter:
         
         len_after = len(gff_feature_dict)
         removed_feature_count = len_before-len_after
-        if removed_feature_count>0:
-            print(f"Number of invalid GFF entries that will not be converted: {removed_feature_count}")
+        #if removed_feature_count>0:
+        #    print(f"Number of invalid GFF entries that will not be converted: {removed_feature_count}")
         
         return gff_feature_dict
     
