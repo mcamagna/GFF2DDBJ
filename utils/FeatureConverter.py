@@ -179,6 +179,11 @@ class FeatureConverter:
                 gff_feature_dict[name] = f
                 
         self._splitCDSWithGaps(gff_feature_dict)
+        #if CDS sequences were split, they will contain the ID attribute again
+        #therefore:
+        self._checkValidityOfQualifiers(gff_feature_dict)
+        self._removeEntriesWithouthQualifiers(gff_feature_dict)
+        
         
         
     def _fixLocusTagsAndGeneNames(self, gff_feature_dict):
@@ -367,6 +372,8 @@ class FeatureConverter:
             
         for key, value in features_to_add:
             gff_feature_dict[key] = value 
+          
+          
                     
     def convertFeatures(self, gff_feature_dict):
         len_before = len(gff_feature_dict)
