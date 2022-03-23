@@ -202,8 +202,35 @@ class FeatureConverter:
         #therefore:
         self._checkValidityOfQualifiers(gff_feature_dict)
         self._removeEntriesWithouthQualifiers(gff_feature_dict)
+        self._removeCDSWithBothSidesTruncated(gff_feature_dict)
         
+    
+    def _removeCDSWithBothSidesTruncated(self, gff_feature_dict):
+        """If a CDS, has an unknown start, and an unknown end, then
+        we can't calculate the codon_start qualifier, which is required by DDBJ.
+        We'll just remove these features"""
         
+        keys_to_remove = set()
+        
+        for key, feature in gff_feature_dict.items():
+            if feature.gfftype == "CDS":
+                if isinstance(feature, TruncatedBothSidesFeature):
+                    keys_to_remove.add(key)
+                elif isinstance(feature, CompoundFeature):
+                    if isinstance(feature.members[0], TruncatedFeature) and isinstance(feature.members[-1], TruncatedFeature):
+                        keys_to_remove.add(key)
+        
+        for k in keys_to_remove:
+            feature = gff_feature_dict.get(k)
+            gff_feature_dict.pop(k)
+            if feature.parent is not None:
+                try:
+                    feature.parent.children.remove(feature)
+                except:
+                    pass
+    
+    
+    
         
     def _fixLocusTagsAndGeneNames(self, gff_feature_dict):
         """The DDBJ locus tag naming convention is very strict.
@@ -342,7 +369,6 @@ class FeatureConverter:
                     elif gap.end < cds.start:
                         gap_index +=1
                     else:
-                        #print(f"CDS: {cds.buildLocationString()}\nGAP:{gap.buildLocationString()}")
                         #compound CDS's don't necessarily need a split, since the gap may lie inside an intron
                         split_required = False
                         if isinstance(cds, CompoundFeature):
@@ -403,6 +429,7 @@ class FeatureConverter:
         self._mapQualifiers(gff_feature_dict)
         self._fixLocusTagsAndGeneNames(gff_feature_dict)
         self._removePlaceHolderTranscriptsFeatures(gff_feature_dict)
+        self._removeCDSWithBothSidesTruncated(gff_feature_dict)
         self._removeGeneFeatures(gff_feature_dict)
         self._addSourceFeatures(gff_feature_dict)
         self._checkValidityOfQualifiers(gff_feature_dict)

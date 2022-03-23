@@ -178,8 +178,10 @@ class CompoundFeature(Feature):
     
     
     def _calculatePhase(self):
-        #TODO: returns negative numbers!
-        
+        if self.end == 3182:
+            print("DEBUG")
+            print(self.buildLocationString())
+            
         if len(self.members)==1:
             self.phase = self.members[0].phase
             return
@@ -214,10 +216,8 @@ class CompoundFeature(Feature):
             self.phase = str(0)    
             
     def clone(self):
-        #TODO: The clone function is not working as expected. The cloned object
-        # has the attributes of the first member, and lacks attributes present in the
-        # cloned object, such as start_codon
         f = CompoundFeature(self.members)
+        f.attributes = copy.deepcopy(self.attributes)
         return f
     
     def buildLocationString(self):

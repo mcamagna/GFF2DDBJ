@@ -246,7 +246,10 @@ class GFFParser:
             
                 
             if feature.gfftype == 'CDS':
-                
+                if feature.end == 3182:
+                    print("DEBUG")
+                    print(feature.buildLocationString())
+                    
                 cds = feature
                 parent = feature.parent
                 if parent is None:
@@ -272,6 +275,7 @@ class GFFParser:
                         if isinstance(feature, CompoundFeature):
                             #for compound features, we can simply replace the member inquestion
                             cds.members[0] = TruncatedLeftFeature.cloneFeature(cds.members[0])
+                            cds._calculatePhase()
                         else:
                             #for regular features, we need to replace them by overwriting the entry in the features
                             #dict later
@@ -281,6 +285,7 @@ class GFFParser:
                     else: #+strand
                         if isinstance(feature, CompoundFeature):
                             cds.members[-1] = TruncatedRightFeature.cloneFeature(cds.members[-1])
+                            cds._calculatePhase()
                         else:
                             newfeature = TruncatedRightFeature.cloneFeature(cds)
                             to_replace.append((key, newfeature))
@@ -291,12 +296,14 @@ class GFFParser:
                     if cds.strand == "-":
                         if isinstance(feature, CompoundFeature):
                             cds.members[-1] = TruncatedRightFeature.cloneFeature(cds.members[-1])
+                            cds._calculatePhase()
                         else:
                             newfeature = TruncatedRightFeature.cloneFeature(cds)
                             to_replace.append((key, newfeature))
                     else:
                         if isinstance(feature, CompoundFeature):
                             cds.members[0] = TruncatedLeftFeature.cloneFeature(cds.members[0])
+                            cds._calculatePhase()
                         else:
                             newfeature = TruncatedLeftFeature.cloneFeature(cds)
                             to_replace.append((key, newfeature))
