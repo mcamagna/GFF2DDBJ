@@ -178,9 +178,6 @@ class CompoundFeature(Feature):
     
     
     def _calculatePhase(self):
-        if self.end == 3182:
-            print("DEBUG")
-            print(self.buildLocationString())
             
         if len(self.members)==1:
             self.phase = self.members[0].phase

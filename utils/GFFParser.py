@@ -246,10 +246,6 @@ class GFFParser:
             
                 
             if feature.gfftype == 'CDS':
-                if feature.end == 3182:
-                    print("DEBUG")
-                    print(feature.buildLocationString())
-                    
                 cds = feature
                 parent = feature.parent
                 if parent is None:
