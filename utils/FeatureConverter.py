@@ -6,6 +6,7 @@ This will help to check whether GFF features are permissable as DDBJ entries and
 from utils.FastaParser import FastaParser
 from utils.Parameters import Parameters
 from utils.features import Feature, CompoundFeature, TruncatedStartFeature, TruncatedEndFeature,TruncatedFeature, TruncatedBothSidesFeature
+import re
 
 class FeatureConverter:
     
@@ -141,6 +142,24 @@ class FeatureConverter:
                 attr["submitter_seqid"] = key
             feature = Feature(seqid=key,gfftype="source", start=start, end=end, attribute_dict=attr)
             gff_feature_dict[key] = feature
+    
+    
+    def _removePlaceHolderTranscriptsFeatures(self, gff_feature_dict):
+        """During the parsing of the GFF file, we may have added mRNA features that were never present in the GFF file.
+        We'll now remove these mRNA's, since writing them to the annotation could lead to the wrong conclusion that these
+        mRNA's experimentally obtained """
+        if Parameters.gff_contains_transcripts:
+            #the original gff file provided transcripts. We shouldn't remove the mRNAs
+            return
+        
+        to_remove_keys = set()
+        for key, feature in gff_feature_dict.items():
+            if feature.gfftype == "mRNA":
+                to_remove_keys.add(key)
+                for child in feature.children:
+                    child.parent = feature.parent
+                    
+        [gff_feature_dict.pop(r) for r in to_remove_keys]
      
     def _removeGeneFeatures(self, gff_feature_dict):
         """Genes are not allowed in DDBJ annotation files. Instead of simply removing them,
@@ -190,7 +209,7 @@ class FeatureConverter:
         """The DDBJ locus tag naming convention is very strict.
         The locus tag must be preceded by a locus tag prefix, separated by an underscore. Locus tags are assigned to most subfeatures 
         of genes and these subfeatures must have the identical locus tag as the corresponding gene BUT the tag cannot be the same as the gene name.
-        Also, in case all subfeatures share the same locus_tag and have a gene qualifier, then the locus_tag should be removed in favor of the gene name.
+        Also, in case all subfeatures share the same locus_tag and have a gene qualifier, then the locus_tag should be removed in favour of the gene name.
          Note: this function will assign the genes locus tag to all subfeatures, regardless of the type. Invalid assigning of the locus_tag 
          qualifier will need to be filtered out by _checkValidityOfQualifiers()
         """
@@ -201,34 +220,27 @@ class FeatureConverter:
             if feature.gfftype == 'gene':
                 locus_tag = feature.attributes.get("locus_tag")
                 if locus_tag is None:
-                    #need to build a locus tag from the gene name
-                    if Parameters.isBreaker2_file:
-                        locus_tag = feature.getAttribute("gene")
-                        if '_g' in locus_tag:
-                            locus_tag = locus_tag.rsplit("_g", maxsplit=1)[1]
-                            locus_tag = locus_tag.split(".")[0]
-                            #fix breaker2 gene name:
-                            feature.attributes['gene'] = 'g'+locus_tag
+                    #need to build a locus tag from the gene name and strip all non-numeric values
+                    locus_tag = feature.getAttribute("gene")
+                    locus_tag = re.sub('[^0-9]','', locus_tag)
+                    #let's pad the number with zeros
+                    locus_tag = ("0"*(8-len(locus_tag)))+locus_tag
+                    
+                
+                if need_to_add_prefix:
+                    #remove underscores since they are not permissible
+                    if "_" in locus_tag:
+                        locus_tag = locus_tag.replace("_", "")
                         
-                if locus_tag is not None:
-                    if need_to_add_prefix:
-                        #remove underscores since they are not permissible
-                        if "_" in locus_tag:
-                            locus_tag = locus_tag.rsplit("_", maxsplit=1)[1]
-                            
-                        if Parameters.isBreaker2_file:
-                            #pad with zeros
-                            locus_tag = ("0"*(8-len(locus_tag)))+locus_tag
-                            
-                        locus_tag = prefix+"_"+locus_tag
-                        feature.attributes["locus_tag"] = locus_tag
-                        for child in feature.children:
-                            #We will assign both gene and locus tag at this point.
-                            #During the _checkValidityOfQualifiers step, the correct choice
-                            #the locus tag may be removed depending on the circumstances.
-                            child.attributes["gene"] = feature.attributes["gene"]
-                            child.attributes["locus_tag"] = locus_tag
-    
+                    locus_tag = prefix+"_"+locus_tag
+                    feature.attributes["locus_tag"] = locus_tag
+                    for child in feature.children:
+                        #We will assign both gene and locus tag at this point.
+                        #During the _checkValidityOfQualifiers step, the correct choice
+                        #the locus tag may be removed depending on the circumstances.
+                        child.attributes["gene"] = feature.attributes["gene"]
+                        child.attributes["locus_tag"] = locus_tag
+
     
     def _removeDuplicateFeatures(self, gff_feature_dict):
         feature_keys_to_remove = set()
@@ -387,6 +399,7 @@ class FeatureConverter:
         self._mapGFF_Features(gff_feature_dict)
         self._mapQualifiers(gff_feature_dict)
         self._fixLocusTagsAndGeneNames(gff_feature_dict)
+        self._removePlaceHolderTranscriptsFeatures(gff_feature_dict)
         self._removeGeneFeatures(gff_feature_dict)
         self._addSourceFeatures(gff_feature_dict)
         self._checkValidityOfQualifiers(gff_feature_dict)

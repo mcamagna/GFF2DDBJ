@@ -169,10 +169,6 @@ class CompoundFeature(Feature):
         for m in self.members:
             children.update(m.children)
         self.children = list(children)    
-        
-        #DEBUG:
-        if self.attributes["ID"] == "g1415":
-            print("DEBUG")
         self._calculatePhase()
     
     

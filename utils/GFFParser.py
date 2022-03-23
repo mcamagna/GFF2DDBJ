@@ -3,7 +3,8 @@ Braker2 generated GFF files lack the gene feature. We'll try to parse the file a
 @author: Maurizio Camagna
 '''
 from utils.DDBJWriter import DDBJWriter
-from utils.features import Feature, CompoundFeature, TruncatedStartFeature, TruncatedEndFeature
+from utils.features import Feature, CompoundFeature, TruncatedStartFeature, TruncatedEndFeature,\
+    TruncatedBothSidesFeature
 from utils.Parameters import Parameters
 
     
@@ -20,8 +21,38 @@ class GFFParser:
         self._mergeCDSSequences()
         self._detectIncompleteCDS()
     
+    
+    def _preparseGFF(self, lines=1000):
+        """Reads the start of the GFF file to determine what type of GFF3 file is present"""
+        file_handle = None
+        if self.gff_path.lower().endswith(".gz"):
+            import gzip
+            file_handle = gzip.open(self.gff_path, 'rt')
+        else:
+            file_handle = open(self.gff_path, 'rt')
+        
+        for i, line in enumerate(file_handle):
+            if i>lines:
+                break
+            if "\tstart_codon\t" in line:
+                Parameters.gff_contains_startcodons = True
+            elif "\tgene\t" in line:
+                Parameters.gff_contains_genes = True
+            elif "\tmRNA\t" in line:
+                Parameters.gff_contains_transcripts = True
+            
+            #lets check if we already found all information we were looking for and stop if so
+            if Parameters.gff_contains_startcodons and Parameters.gff_contains_genes and Parameters.gff_contains_transcripts:
+                break
+            
+        file_handle.close()
+    
+    
     def _parseGFF(self):
         """Iterates through a GFF file and extracts all features."""
+        
+        self._preparseGFF() #pre-parse the GFF to see what type of GFF file it is
+        
         file_handle = None
         if self.gff_path.lower().endswith(".gz"):
             import gzip
@@ -45,9 +76,6 @@ class GFFParser:
             phase=spl[7]
             attributes = spl[8].split(";")
             
-            if not Parameters.isBreaker2_file and source.upper() == "AUGUSTUS":
-                Parameters.isBreaker2_file = True
-            
             feature = Feature(seqid=seqid, source=source, gfftype=gfftype, start=start, end=end, score=score, strand=strand,phase=phase)
             
             for attribute in attributes:
@@ -58,12 +86,11 @@ class GFFParser:
                     feature.addAttribute(name, value)
             
             
-            #Some GFF files assign the same ID to all CDS fragments, spread over multiple linse, others use different ID's
+            #Some GFF files assign the same ID to all CDS fragments, spread over multiple lines, others use different ID's
             #If the ID is already present, we can assign a new ID and later merge them via their shared parent
             while feature.getAttribute("ID") in self.features.keys():
                 feature.attributes["ID"] = feature.attributes["ID"]+'X'
             self.features[feature.getAttribute("ID")] = feature
-            
             
         file_handle.close()
         
@@ -84,21 +111,50 @@ class GFFParser:
             else:
                 #check if the parent exists
                 parent = self.features.get(parent_id)
-                #print(parent_id)
-                if parent is None:
-                    #some GFF files, including Braker2 generated ones don't actually
+                if parent is not None:
+                    parent.children.append(f)
+                    f.parent = parent
+                else:
+                    #some GFF files, don't actually
                     #provide the parent. We'll have to create the parent in that case
-                    #For now we'll make a placeholder feature. Once all features are connect, we can
+                    #For now we'll make a placeholder feature. Once all features are connected, we can
                     #calculate the start/end/strand etc from all the child nodes
-                    parent = Feature(gfftype="PLACEHOLDER")
-                    placeholders.append(parent)
-                    parent.addAttribute("ID", parent_id)
-                    self.features[parent_id] = parent
-                    self.parentFeatures.append(parent)
+                    if Parameters.gff_contains_transcripts and Parameters.gff_contains_genes == False:
+                        #the gff file contains mRNAs, so the missing parent must belong be a gene
+                        parent = Feature(gfftype="gene")
+                        placeholders.append(parent)
+                        parent.addAttribute("ID", parent_id)
+                        self.features[parent_id] = parent
+                        self.parentFeatures.append(parent)
+                        parent.children.append(f)
+                        f.parent = parent
+                        
+                        
+                    elif Parameters.gff_contains_transcripts == False and Parameters.gff_contains_genes == False:
+                        #the gff file contains neither gene nor mRNA. We will need to create both
+                        mRNA = Feature(gfftype="mRNA")
+                        placeholders.append(mRNA)
+                        gene = Feature(gfftype="gene")
+                        placeholders.append(gene)
+                        
+                        mRNA.addAttribute("ID", parent_id)
+                        mRNA.children.append(f)
+                        f.parent = mRNA
+                        
+                        gene_id = None
+                        if "." in parent_id:
+                            gene_id = parent_id.rsplit(".", maxsplit=1)[0]
+                        else:
+                            gene_id = "gene_"+parent_id
+                        gene.addAttribute("ID", gene_id)
+                        gene.children.append(mRNA)
+                        mRNA.parent = gene
+                        self.parentFeatures.append(gene)
+                        
+                        self.features[gene.getAttribute("ID")] = gene
+                        self.features[mRNA.getAttribute("ID")] = mRNA
                     
-                parent.children.append(f)
-                f.parent = parent
-        
+                    
         for placeholder in placeholders:
             self._fixPlaceholder(placeholder)
         
@@ -109,9 +165,6 @@ class GFFParser:
         file were referring to a parent, that was not written into the GFF file.
         Using their child nodes, we can infer the required information.
         """
-        children_contain_gene_feature = False
-        child_gene = None
-        
         
         child_start_positions = []
         child_end_positions = []
@@ -120,13 +173,11 @@ class GFFParser:
         source = None
         
         for child in placeholder_feature.children:
+            #it's possible that the child is also a placeholder, whose attributes haven't been calculated yet!
+            if child.start is None:
+                self._fixPlaceholder(child)
             child_start_positions.append(child.start)
             child_end_positions.append(child.end)
-            
-            child_type = child.gfftype.upper()
-            if child_type == "GENE":
-                children_contain_gene_feature = True
-                child_gene = child
             
             if seqid is None:
                 seqid = child.seqid
@@ -147,24 +198,6 @@ class GFFParser:
         placeholder_feature.score = '.'
         placeholder_feature.phase = '.'
         
-        if not children_contain_gene_feature:
-            #TODO: Actually the placeholder is probably a transcript, not a gene.
-            #We can treat it as a gene, since these transcripts will later be merged anyways,
-            #but for compatibility with non-braker2 gff files, this needs to be fixed
-            placeholder_feature.gfftype = "gene"
-        else:
-            #The placeholder contains a gene feature as child.
-            #We will make that gene the parent of the other children of the placeholder
-            #before removing the placeholder, since it serves no purpose
-            new_parent = child_gene
-            for pc in placeholder_feature.children:
-                if pc != new_parent:
-                    new_parent.children.add(pc)
-                    pc.parent = new_parent
-            self.parentFeatures.remove(placeholder_feature)
-            self.parentFeatures.append(new_parent)
-            self.features.pop(placeholder_feature.attributes.get("ID"))
-        
    
            
     def _mergeCDSSequences(self):
@@ -178,7 +211,7 @@ class GFFParser:
             if feature.gfftype == "mRNA":
                 cds_list = feature.getAllDownstreamCDS()
                 
-                if len(cds_list)>0:
+                if len(cds_list)>1:
                     compound_feature = CompoundFeature(cds_list)
                     entries_to_add.append((compound_feature.getAttribute("ID"), compound_feature))
                     for cds in cds_list:
@@ -201,6 +234,9 @@ class GFFParser:
         If i.e. the start_codon is missing, then this means that the CDS sequence is incomplete and this
         needs to be annotated differently in DDBJ annotations.
         """
+        if not Parameters.gff_contains_startcodons:
+            return
+        
         to_replace=[]
         
         for key, feature in self.features.items():
@@ -224,19 +260,21 @@ class GFFParser:
                 if len(stopcodons)>1 or len(startcodons)>1:
                     print("ERROR: Multiple start- or stopcodons found for CDS")
                 
-                #if has both start and stop we don't have to fix anything
-                #if it has neither, it is apparently not part of the GFF file (and: we couldn't fix anything anyways in that case)
-                if has_startcodon == has_stopcodon:
+                if has_startcodon and has_stopcodon: #the CDS is fine, nothing to do here
                     continue
-                    
-                if has_startcodon: #the end of the CDS is missing
+                
+                elif has_startcodon: #the end of the CDS is missing
                     newfeature = TruncatedEndFeature.cloneFeature(cds)
                     to_replace.append((key, newfeature))
                 
                 elif has_stopcodon:
                     newfeature = TruncatedStartFeature.cloneFeature(cds)
                     to_replace.append((key, newfeature))
-            
+                    
+                else: #the feature lacks both start and stopcodon
+                    newfeature = TruncatedBothSidesFeature.cloneFeature(cds)
+                    to_replace.append((key, newfeature))
+                
         for key, newfeature in to_replace:
             oldfeature = self.features[key]
             if oldfeature.parent is not None:
