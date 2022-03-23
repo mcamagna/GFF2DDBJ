@@ -5,7 +5,7 @@ This will help to check whether GFF features are permissable as DDBJ entries and
 
 from utils.FastaParser import FastaParser
 from utils.Parameters import Parameters
-from utils.features import Feature, CompoundFeature, TruncatedStartFeature, TruncatedEndFeature,TruncatedFeature, TruncatedBothSidesFeature
+from utils.features import Feature, CompoundFeature, TruncatedLeftFeature, TruncatedRightFeature,TruncatedFeature, TruncatedBothSidesFeature
 import re
 
 class FeatureConverter:
@@ -285,6 +285,10 @@ class FeatureConverter:
                    
         for key, feature in gff_feature_dict.items():
             if feature.gfftype == "CDS":
+                if feature.start == 33 and feature.end == 664:
+                    print("DEBUG")
+                
+                
                 tt = feature.attributes.get("transl_table")
                 if tt is None:
                     tt = "1"

@@ -3,7 +3,7 @@ Braker2 generated GFF files lack the gene feature. We'll try to parse the file a
 @author: Maurizio Camagna
 '''
 from utils.DDBJWriter import DDBJWriter
-from utils.features import Feature, CompoundFeature, TruncatedStartFeature, TruncatedEndFeature,\
+from utils.features import Feature, CompoundFeature, TruncatedLeftFeature, TruncatedRightFeature,\
     TruncatedBothSidesFeature
 from utils.Parameters import Parameters
 
@@ -243,7 +243,11 @@ class GFFParser:
             has_startcodon = False
             has_stopcodon = False
             
+                
             if feature.gfftype == 'CDS':
+                if feature.start == 33 and feature.end == 664:
+                    print("DEBUG")
+                    
                 cds = feature
                 parent = feature.parent
                 if parent is None:
@@ -264,11 +268,20 @@ class GFFParser:
                     continue
                 
                 elif has_startcodon: #the end of the CDS is missing
-                    newfeature = TruncatedEndFeature.cloneFeature(cds)
+                    #TODO: this is strand dependent!!
+                    newfeature = None
+                    if cds.strand == "-":
+                        newfeature = TruncatedLeftFeature.cloneFeature(cds)
+                    else:
+                        newfeature = TruncatedRightFeature.cloneFeature(cds)
                     to_replace.append((key, newfeature))
                 
                 elif has_stopcodon:
-                    newfeature = TruncatedStartFeature.cloneFeature(cds)
+                    newfeature = None
+                    if cds.strand == "-":
+                        newfeature = TruncatedRightFeature.cloneFeature(cds)
+                    else:
+                        newfeature = TruncatedLeftFeature.cloneFeature(cds)
                     to_replace.append((key, newfeature))
                     
                 else: #the feature lacks both start and stopcodon

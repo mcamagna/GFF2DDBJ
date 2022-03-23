@@ -35,8 +35,8 @@ class Feature:
         
     def split(self, splitstart, splitend):
         """This will split the feature into two pieces, and return two truncated features."""
-        left = TruncatedEndFeature.cloneFeature(self)
-        right = TruncatedStartFeature.cloneFeature(self)
+        left = TruncatedRightFeature.cloneFeature(self)
+        right = TruncatedLeftFeature.cloneFeature(self)
         left.end = splitstart-1
         right.start = splitend+1
         left._calculatePhase()
@@ -178,7 +178,7 @@ class CompoundFeature(Feature):
             return
         
         if self.strand == '+':
-            if not isinstance(self.members[0], TruncatedStartFeature) and not isinstance(self.members[0], TruncatedBothSidesFeature):
+            if not isinstance(self.members[0], TruncatedLeftFeature) and not isinstance(self.members[0], TruncatedBothSidesFeature):
                 self.phase = self.members[0].phase
             else:
                 #do the complicated calculation from the end
@@ -191,7 +191,7 @@ class CompoundFeature(Feature):
                 self.phase = str(spliced_length)
                      
         elif self.strand == '-':
-            if not isinstance(self.members[-1], TruncatedEndFeature) and not isinstance(self.members[-1], TruncatedBothSidesFeature):
+            if not isinstance(self.members[-1], TruncatedRightFeature) and not isinstance(self.members[-1], TruncatedBothSidesFeature):
                 self.phase = self.members[-1].phase
             else:
                 #do complicated calculation from the start (the stop codon)
@@ -274,12 +274,12 @@ class TruncatedFeature(Feature):
     
     
 """A special feature that, where the actual start position is smaller than the provided start position"""
-class TruncatedStartFeature(TruncatedFeature):
+class TruncatedLeftFeature(TruncatedFeature):
     
     @staticmethod
     def cloneFeature(basefeature):
-        """Make a new TruncatedStartFeature object from a given basefeature"""
-        newfeature = TruncatedStartFeature()
+        """Make a new TruncatedLeftFeature object from a given basefeature"""
+        newfeature = TruncatedLeftFeature()
         newfeature.seqid = basefeature.seqid
         newfeature.source = basefeature.source
         newfeature.gfftype = basefeature.gfftype
@@ -299,17 +299,25 @@ class TruncatedStartFeature(TruncatedFeature):
     
     
     def _calculatePhase(self):
+        if self.start == 33 and self.end == 664:
+            print("DEBUG")
+        
+        if self.strand == '-':
+            #the start codon is instact
+            if not self.phase.isdigit():
+                self.phase = str(0)
+            
+        else:
         #the start has been trimmed, so we need to try and obtain the phase from the stop codon at the end
         #note: if this is part of a compound feature, then the compound feature will have to calculate the 
-        #phase from the actual stop codon
-        length = (self.end - self.start)+1 #+1 because: [1,2,3] -> 3-1 = 2; but the length is actually 3
-        while length>2:
-            length-=3
-        self.phase = str(length)
-        
+            length = (self.end - self.start)+1 #+1 because: [1,2,3] -> 3-1 = 2; but the length is actually 3
+            while length>2:
+                length-=3
+            self.phase = str(length)
+            
         
     def clone(self):
-        f = TruncatedStartFeature()
+        f = TruncatedLeftFeature()
         import copy
         f.seqid = self.seqid
         f.source = self.source
@@ -335,7 +343,7 @@ class TruncatedStartFeature(TruncatedFeature):
     def split(self, splitstart, splitend):
         """This will split the feature into two pieces, and return two truncated features."""
         left = TruncatedBothSidesFeature.cloneFeature(self)
-        right = TruncatedStartFeature.cloneFeature(self)
+        right = TruncatedLeftFeature.cloneFeature(self)
         left.end = splitstart-1
         right.start = splitend+1
         #recalculate phase since the positions were changed
@@ -348,12 +356,12 @@ class TruncatedStartFeature(TruncatedFeature):
 
 
 
-class TruncatedEndFeature(TruncatedFeature):
+class TruncatedRightFeature(TruncatedFeature):
  
     @staticmethod
     def cloneFeature(basefeature):
-        """Make a new TruncatedEndFeature object from a given basefeature"""
-        newfeature = TruncatedEndFeature()
+        """Make a new TruncatedRightFeature object from a given basefeature"""
+        newfeature = TruncatedRightFeature()
         newfeature.seqid = basefeature.seqid
         newfeature.source = basefeature.source
         newfeature.gfftype = basefeature.gfftype
@@ -373,13 +381,23 @@ class TruncatedEndFeature(TruncatedFeature):
         TruncatedFeature.__init__(self, seqid="", source="", gfftype="", start=None, end=None, score=None, strand="", phase="", attribute_dict=None)
         self._calculatePhase()
     
+    
     def _calculatePhase(self):
-        if not self.phase.isdigit():
-            self.phase = str(0)
+        if self.strand == '-':
+            #the start has been trimmed, so we need to try and obtain the phase from the stop codon at the end
+            #note: if this is part of a compound feature, then the compound feature will have to calculate the 
+            length = (self.end - self.start)+1 #+1 because: [1,2,3] -> 3-1 = 2; but the length is actually 3
+            while length>2:
+                length-=3
+            self.phase = str(length)
+        else:
+            #the start codon is instact
+            if not self.phase.isdigit():
+                self.phase = str(0)
     
     
     def clone(self):
-        f = TruncatedEndFeature()
+        f = TruncatedRightFeature()
         import copy
         f.seqid = self.seqid
         f.source = self.source
@@ -404,7 +422,7 @@ class TruncatedEndFeature(TruncatedFeature):
     
     def split(self, splitstart, splitend):
         """This will split the feature into two pieces, and return two truncated features."""
-        left = TruncatedEndFeature.cloneFeature(self)
+        left = TruncatedRightFeature.cloneFeature(self)
         right = TruncatedBothSidesFeature.cloneFeature(self)
         left.end = splitstart-1
         right.start = splitend+1
