@@ -285,10 +285,6 @@ class FeatureConverter:
                    
         for key, feature in gff_feature_dict.items():
             if feature.gfftype == "CDS":
-                if feature.start == 33 and feature.end == 664:
-                    print("DEBUG")
-                
-                
                 tt = feature.attributes.get("transl_table")
                 if tt is None:
                     tt = "1"

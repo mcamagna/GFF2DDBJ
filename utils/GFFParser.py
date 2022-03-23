@@ -104,16 +104,17 @@ class GFFParser:
         
         for f_id in keys:
             #print(f_id)
-            f = self.features.get(f_id)
-            parent_id = f.getAttribute("Parent")
+            feature = self.features.get(f_id)
+            
+            parent_id = feature.getAttribute("Parent")
             if parent_id is None:
-                self.parentFeatures.append(f)
+                self.parentFeatures.append(feature)
             else:
                 #check if the parent exists
                 parent = self.features.get(parent_id)
                 if parent is not None:
-                    parent.children.append(f)
-                    f.parent = parent
+                    parent.children.append(feature)
+                    feature.parent = parent
                 else:
                     #some GFF files, don't actually
                     #provide the parent. We'll have to create the parent in that case
@@ -126,8 +127,8 @@ class GFFParser:
                         parent.addAttribute("ID", parent_id)
                         self.features[parent_id] = parent
                         self.parentFeatures.append(parent)
-                        parent.children.append(f)
-                        f.parent = parent
+                        parent.children.append(feature)
+                        feature.parent = parent
                         
                         
                     elif Parameters.gff_contains_transcripts == False and Parameters.gff_contains_genes == False:
@@ -138,8 +139,8 @@ class GFFParser:
                         placeholders.append(gene)
                         
                         mRNA.addAttribute("ID", parent_id)
-                        mRNA.children.append(f)
-                        f.parent = mRNA
+                        mRNA.children.append(feature)
+                        feature.parent = mRNA
                         
                         gene_id = None
                         if "." in parent_id:
@@ -245,8 +246,9 @@ class GFFParser:
             
                 
             if feature.gfftype == 'CDS':
-                if feature.start == 33 and feature.end == 664:
+                if feature.attributes["ID"] == "g2229.t1.CDS1":
                     print("DEBUG")
+                    print(feature.buildLocationString())
                     
                 cds = feature
                 parent = feature.parent
@@ -268,25 +270,52 @@ class GFFParser:
                     continue
                 
                 elif has_startcodon: #the end of the CDS is missing
-                    #TODO: this is strand dependent!!
-                    newfeature = None
+
                     if cds.strand == "-":
-                        newfeature = TruncatedLeftFeature.cloneFeature(cds)
-                    else:
-                        newfeature = TruncatedRightFeature.cloneFeature(cds)
-                    to_replace.append((key, newfeature))
-                
+                        if isinstance(feature, CompoundFeature):
+                            #for compound features, we can simply replace the member inquestion
+                            cds.members[0] = TruncatedLeftFeature.cloneFeature(cds.members[0])
+                        else:
+                            #for regular features, we need to replace them by overwriting the entry in the features
+                            #dict later
+                            newfeature = TruncatedLeftFeature.cloneFeature(cds)
+                            to_replace.append((key, newfeature)) 
+                            
+                    else: #+strand
+                        if isinstance(feature, CompoundFeature):
+                            cds.members[-1] = TruncatedRightFeature.cloneFeature(cds.members[-1])
+                        else:
+                            newfeature = TruncatedRightFeature.cloneFeature(cds)
+                            to_replace.append((key, newfeature))
+                    
+                        
                 elif has_stopcodon:
-                    newfeature = None
+                    
                     if cds.strand == "-":
-                        newfeature = TruncatedRightFeature.cloneFeature(cds)
+                        if isinstance(feature, CompoundFeature):
+                            cds.members[-1] = TruncatedRightFeature.cloneFeature(cds.members[-1])
+                        else:
+                            newfeature = TruncatedRightFeature.cloneFeature(cds)
+                            to_replace.append((key, newfeature))
                     else:
-                        newfeature = TruncatedLeftFeature.cloneFeature(cds)
-                    to_replace.append((key, newfeature))
+                        if isinstance(feature, CompoundFeature):
+                            cds.members[0] = TruncatedLeftFeature.cloneFeature(cds.members[0])
+                        else:
+                            newfeature = TruncatedLeftFeature.cloneFeature(cds)
+                            to_replace.append((key, newfeature))
+                    
+                    if feature.attributes["ID"] == "g2229.t1.CDS1":
+                        print("DEBUG")
+                        print(feature.buildLocationString())
+                    
                     
                 else: #the feature lacks both start and stopcodon
-                    newfeature = TruncatedBothSidesFeature.cloneFeature(cds)
-                    to_replace.append((key, newfeature))
+                    if isinstance(feature, CompoundFeature):
+                        cds.members[0] = TruncatedLeftFeature.cloneFeature(cds.members[0])
+                        cds.members[-1] = TruncatedRightFeature.cloneFeature(cds.members[-1])
+                    else:
+                        newfeature = TruncatedBothSidesFeature.cloneFeature(cds)
+                        to_replace.append((key, newfeature))
                 
         for key, newfeature in to_replace:
             oldfeature = self.features[key]

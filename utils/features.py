@@ -299,8 +299,6 @@ class TruncatedLeftFeature(TruncatedFeature):
     
     
     def _calculatePhase(self):
-        if self.start == 33 and self.end == 664:
-            print("DEBUG")
         
         if self.strand == '-':
             #the start codon is instact
