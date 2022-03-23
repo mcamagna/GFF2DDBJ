@@ -5,7 +5,7 @@ This will help to check whether GFF features are permissable as DDBJ entries and
 
 from utils.FastaParser import FastaParser
 from utils.Parameters import Parameters
-from utils.features import Feature, CompoundFeature
+from utils.features import Feature, CompoundFeature, TruncatedStartFeature, TruncatedEndFeature,TruncatedFeature, TruncatedBothSidesFeature
 
 class FeatureConverter:
     
@@ -247,38 +247,42 @@ class FeatureConverter:
             gff_feature_dict.pop(fkr)
     
     
+    @staticmethod
+    def _calculateORF_Offset(pos_1, pos_2):
+        """Calculates the Open Reading Frame offset.
+        If pos 1 and pos 2 are in frame, return 0
+        otherwise returns 1, or 2.
+        The order of the positions is irrelevant
+        """
+        a = min(pos_1, pos_2)
+        b = max(pos_1, pos_2)
+        diff = b-a
+        diff+=1 #Not sure, but the b position maybe up-to, but not including the last base
+        diff+=1 #because we need the number of base pairs. Example 6bp's:  1,2,3,4,5,6 --> 6-1 = 5
+        mod = diff%3
+        return mod
+        
+    
     def _addAdditionalCDSQualifiers(self, gff_feature_dict):
         """DDBJ annotations require CDS features to contain transl_table and codon_start.
-        Braker2 provides a special feature 'start_codon' which is not supported by DDBJ.
-        We'll have to parse the 'start_codon' features and conclude the correct 'codon_start' 
-        value for a corresponding CDS feature
+        codon_start represents the ORF offset and would typically be 1, since a CDS starts with the start codon.
+        However, the CDS may also be a truncated CDS with an unknown start or end. We'll try to infer the codon_start
+        in such cases.
         transl_table will always be set to 1 if no other value was provided via the command line.
         """
-        for key, feature in gff_feature_dict.items():
-            if feature.gfftype == "start_codon":
-                strand = feature.strand
-                cds_list = list(feature.parent.getAllDownstreamCDS())
-                distances = [abs(cds.start - feature.start) if strand == "+" else abs(cds.end - feature.end) for cds in cds_list]
-                if 0 in distances:
-                    #found start codon on frame 1 of the current CDS. 
-                    #We can abort, since the default value of 1 will be assigned later anyways
-                    continue
-                else:
-                    argmin = min(range(len(distances)), key=lambda x: distances[x])
-                    distance = distances[argmin]
-                    while distance >2:
-                        distance -=3
-                    cds_list[argmin].attributes['codon_start'] = str(distance+1)
-                    
+                   
         for key, feature in gff_feature_dict.items():
             if feature.gfftype == "CDS":
                 tt = feature.attributes.get("transl_table")
                 if tt is None:
                     tt = "1"
                     feature.attributes["transl_table"] = tt
+                        
                 cs = feature.attributes.get("codon_start")
                 if cs is None:
-                    cs = "1"
+                    
+                    cs = str((int(feature.phase)+1))
+                    
                     feature.attributes["codon_start"] = cs
     
     def _addExonIntronNumbers(self, gff_feature_dict):
@@ -361,7 +365,8 @@ class FeatureConverter:
                             #since the newly split CDS will now be found via getAllDownstreamOfType
                             cds_list = list(feature.getAllDownstreamOfType("CDS"))
                             cds_list.sort(key=lambda x: x.start)
-                            
+                            gap_index-=1 # we want to rerun the same gap again in case we have multiple CDS's affected by the same gap
+                        
                         gap_index+=1
         
         for k in keys_to_remove:

@@ -9,7 +9,7 @@ class Feature:
         self.end = end
         self.score = score
         self.strand = strand
-        self.phase = phase
+        self.phase = str(phase)
         self.attributes = attribute_dict
         if self.attributes is None:
             self.attributes = dict()
@@ -27,12 +27,20 @@ class Feature:
             s= "complement("+s+")"
         return s
     
+    
+    def _calculatePhase(self):
+        if not self.phase.isdigit():
+            self.phase = str(0)
+            
+        
     def split(self, splitstart, splitend):
         """This will split the feature into two pieces, and return two truncated features."""
         left = TruncatedEndFeature.cloneFeature(self)
         right = TruncatedStartFeature.cloneFeature(self)
         left.end = splitstart-1
         right.start = splitend+1
+        left._calculatePhase()
+        right._calculatePhase()
         return [left, right]
     
     def addAttribute(self, name, value):
@@ -73,8 +81,22 @@ class Feature:
         for child in self.children:
             if child.gfftype in gfftypes:
                 to_return.add(child)
-                to_return.update(child.getAllDownstreamOfType(gfftypes))
+            to_return.update(child.getAllDownstreamOfType(gfftypes))
         return to_return
+    
+    def removeDownstreamChild(self, obj):
+        """Removes a feature/object from the children list of either this object, 
+        or the downstream child that is the parent of this object"""
+        try:
+            self.children.remove(obj)
+            return True
+        except:
+            for child in self.children:
+                success = child.removeDownstreamChild(obj)
+                if success:
+                    return True
+        return False
+        
         
     def getAllDownstreamCDS(self):
         return self.getAllDownstreamOfType(["CDS", "cds"])
@@ -121,7 +143,7 @@ class Feature:
         f.end = self.end
         f.score = self.score
         f.strand = self.strand
-        f.phase = self.phase
+        f.phase = str(self.phase)
         f.attributes = copy.deepcopy(self.attributes)    
         f.parent = self.parent
         f.children = self.children
@@ -143,10 +165,50 @@ class CompoundFeature(Feature):
         
         self.parent = self.members[0].parent
         children = set()
+
         for m in self.members:
             children.update(m.children)
-        self.children = list(children)
+        self.children = list(children)    
+        
+        #DEBUG:
+        if self.attributes["ID"] == "g1415":
+            print("DEBUG")
+        self._calculatePhase()
     
+    
+    def _calculatePhase(self):
+        if len(self.members)==1:
+            self.phase = self.members[0].phase
+            return
+        
+        if self.strand == '+':
+            if not isinstance(self.members[0], TruncatedStartFeature) and not isinstance(self.members[0], TruncatedBothSidesFeature):
+                self.phase = self.members[0].phase
+            else:
+                #do the complicated calculation from the end
+                spliced_length = 0
+                for m in self.members:
+                    spliced_length+= (m.end-m.start)+1
+                
+                while spliced_length>2:
+                    spliced_length -= 3
+                self.phase = str(spliced_length)
+                     
+        elif self.strand == '-':
+            if not isinstance(self.members[-1], TruncatedEndFeature) and not isinstance(self.members[-1], TruncatedBothSidesFeature):
+                self.phase = self.members[-1].phase
+            else:
+                #do complicated calculation from the start (the stop codon)
+                spliced_length = 0
+                for m in self.members:
+                    spliced_length+= (m.start-m.end)+1
+                
+                while spliced_length>2:
+                    spliced_length -= 3
+                self.phase = str(spliced_length)
+        else:
+            self.phase = str(0)    
+            
     def clone(self):
         f = CompoundFeature(self.members)
         return f
@@ -197,13 +259,26 @@ class CompoundFeature(Feature):
         right.members = right_members
         left.end = splitstart-1
         right.start = splitend+1
+        left._calculatePhase()
+        right._calculatePhase()
         return [left, right]
     
+    def containsTruncatedMember(self):
+        for m in self.members:
+            if isinstance(m, TruncatedFeature):
+                return True
+        return False
+        
+    
+class TruncatedFeature(Feature):
+    """An empty class, serving as interface for all features that are truncated."""
+    def __init__(self, seqid="", source="", gfftype="", start=None, end=None, score=None, strand="", phase="", attribute_dict=None):
+        Feature.__init__(self, seqid=seqid, source=source, gfftype=gfftype, start=start, end=end, score=score, strand=strand, phase=phase, attribute_dict=attribute_dict)
     
     
     
 """A special feature that, where the actual start position is smaller than the provided start position"""
-class TruncatedStartFeature(Feature):
+class TruncatedStartFeature(TruncatedFeature):
     
     @staticmethod
     def cloneFeature(basefeature):
@@ -220,12 +295,23 @@ class TruncatedStartFeature(Feature):
         newfeature.attributes = basefeature.attributes.copy() 
         newfeature.parent = basefeature.parent
         newfeature.children = basefeature.children #list of feature objects belonging to this feature
+        newfeature._calculatePhase()
         return newfeature
     
     def __init__(self):
-        Feature.__init__(self, seqid="", source="", gfftype="", start=None, end=None, score=None, strand="", phase="", attribute_dict=None)
+        TruncatedFeature.__init__(self, seqid="", source="", gfftype="", start=None, end=None, score=None, strand="", phase="", attribute_dict=None)
     
     
+    def _calculatePhase(self):
+        #the start has been trimmed, so we need to try and obtain the phase from the stop codon at the end
+        #note: if this is part of a compound feature, then the compound feature will have to calculate the 
+        #phase from the actual stop codon
+        length = (self.end - self.start)+1 #+1 because: [1,2,3] -> 3-1 = 2; but the length is actually 3
+        while length>2:
+            length-=3
+        self.phase = str(length)
+        
+        
     def clone(self):
         f = TruncatedStartFeature()
         import copy
@@ -256,6 +342,9 @@ class TruncatedStartFeature(Feature):
         right = TruncatedStartFeature.cloneFeature(self)
         left.end = splitstart-1
         right.start = splitend+1
+        #recalculate phase since the positions were changed
+        left._calculatePhase()
+        right._calculatePhase()
         return [left, right]
     
     
@@ -263,7 +352,7 @@ class TruncatedStartFeature(Feature):
 
 
 
-class TruncatedEndFeature(Feature):
+class TruncatedEndFeature(TruncatedFeature):
  
     @staticmethod
     def cloneFeature(basefeature):
@@ -280,11 +369,18 @@ class TruncatedEndFeature(Feature):
         newfeature.attributes = basefeature.attributes.copy() 
         newfeature.parent = basefeature.parent
         newfeature.children = basefeature.children #list of feature objects belonging to this feature
+        newfeature._calculatePhase()
         return newfeature
     
     
     def __init__(self):
-        Feature.__init__(self, seqid="", source="", gfftype="", start=None, end=None, score=None, strand="", phase="", attribute_dict=None)
+        TruncatedFeature.__init__(self, seqid="", source="", gfftype="", start=None, end=None, score=None, strand="", phase="", attribute_dict=None)
+        self._calculatePhase()
+    
+    def _calculatePhase(self):
+        if not self.phase.isdigit():
+            self.phase = str(0)
+    
     
     def clone(self):
         f = TruncatedEndFeature()
@@ -316,10 +412,13 @@ class TruncatedEndFeature(Feature):
         right = TruncatedBothSidesFeature.cloneFeature(self)
         left.end = splitstart-1
         right.start = splitend+1
+        #recalculate phase since the positions were changed
+        left._calculatePhase()
+        right._calculatePhase()
         return [left, right]
     
     
-class TruncatedBothSidesFeature(Feature):
+class TruncatedBothSidesFeature(TruncatedFeature):
  
     @staticmethod
     def cloneFeature(basefeature):
@@ -336,12 +435,14 @@ class TruncatedBothSidesFeature(Feature):
         newfeature.attributes = basefeature.attributes.copy() 
         newfeature.parent = basefeature.parent
         newfeature.children = basefeature.children #list of feature objects belonging to this feature
+        newfeature._calculatePhase()
         return newfeature
     
     
     def __init__(self):
-        Feature.__init__(self, seqid="", source="", gfftype="", start=None, end=None, score=None, strand="", phase="", attribute_dict=None)
-    
+        TruncatedFeature.__init__(self, seqid="", source="", gfftype="", start=None, end=None, score=None, strand="", phase="", attribute_dict=None)
+        self._calculatePhase()
+        
     def clone(self):
         f = TruncatedBothSidesFeature()
         import copy
@@ -365,6 +466,11 @@ class TruncatedBothSidesFeature(Feature):
             s = "complement("+s+")"
         return s
     
+    def _calculatePhase(self):
+        #This is not correct, though there is no way to calculate the phase
+        #If start and stopcodons are missing, then we simply can't know the phase if it wasn't provided in the GFF
+        if not self.phase.isdigit():
+            self.phase = str(0)
     
     def split(self, splitstart, splitend):
         """This will split the feature into two pieces, and return two truncated features."""
@@ -372,4 +478,8 @@ class TruncatedBothSidesFeature(Feature):
         right = TruncatedBothSidesFeature.cloneFeature(self)
         left.end = splitstart-1
         right.start = splitend+1
+        #recalculate phase since the positions were changed
+        left._calculatePhase()
+        right._calculatePhase()
+        
         return [left, right]

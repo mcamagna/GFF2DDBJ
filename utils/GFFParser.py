@@ -57,9 +57,13 @@ class GFFParser:
                     value = attsplit[1]
                     feature.addAttribute(name, value)
             
-            #print(feature.getAttribute("ID"), feature.getAttribute("Parent"),attributes)
-
-            self.features[feature.getAttribute("ID")] = feature 
+            
+            #Some GFF files assign the same ID to all CDS fragments, spread over multiple linse, others use different ID's
+            #If the ID is already present, we can assign a new ID and later merge them via their shared parent
+            while feature.getAttribute("ID") in self.features.keys():
+                feature.attributes["ID"] = feature.attributes["ID"]+'X'
+            self.features[feature.getAttribute("ID")] = feature
+            
             
         file_handle.close()
         
@@ -171,14 +175,14 @@ class GFFParser:
         entries_to_add = []
         
         for key, feature in self.features.items():
-            if feature.gfftype == "gene":
+            if feature.gfftype == "mRNA":
                 cds_list = feature.getAllDownstreamCDS()
                 
                 if len(cds_list)>0:
                     compound_feature = CompoundFeature(cds_list)
                     entries_to_add.append((compound_feature.getAttribute("ID"), compound_feature))
                     for cds in cds_list:
-                        feature.children.remove(cds)
+                        feature.removeDownstreamChild(cds)
                         keys_to_remove.add(cds.attributes["ID"])
                     feature.children.append(compound_feature)
     
