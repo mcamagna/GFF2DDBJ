@@ -246,10 +246,7 @@ class GFFParser:
             
                 
             if feature.gfftype == 'CDS':
-                if feature.attributes["ID"] == "g2229.t1.CDS1":
-                    print("DEBUG")
-                    print(feature.buildLocationString())
-                    
+                
                 cds = feature
                 parent = feature.parent
                 if parent is None:
@@ -303,10 +300,6 @@ class GFFParser:
                         else:
                             newfeature = TruncatedLeftFeature.cloneFeature(cds)
                             to_replace.append((key, newfeature))
-                    
-                    if feature.attributes["ID"] == "g2229.t1.CDS1":
-                        print("DEBUG")
-                        print(feature.buildLocationString())
                     
                     
                 else: #the feature lacks both start and stopcodon

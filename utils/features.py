@@ -1,4 +1,6 @@
+import copy
 """The Feature class stores all required information for features, including their relationships."""  
+
 class Feature:
   
     def __init__(self, seqid="", source="", gfftype="", start=None, end=None, score=None, strand="", phase="", attribute_dict=None):
@@ -40,7 +42,9 @@ class Feature:
         left.end = splitstart-1
         right.start = splitend+1
         left._calculatePhase()
+        left.attributes["codon_start"] = str(int(left.phase)+1)
         right._calculatePhase()
+        right.attributes["codon_start"] = str(int(right.phase)+1)
         return [left, right]
     
     def addAttribute(self, name, value):
@@ -161,7 +165,8 @@ class CompoundFeature(Feature):
         start = min([m.start for m in self.members])
         end = max([m.end for m in self.members])
         
-        Feature.__init__(self, self.members[0].seqid, self.members[0].source, self.members[0].gfftype, start, end, self.members[0].score, self.members[0].strand, self.members[0].phase, self.members[0].attributes)
+        attributes = copy.deepcopy(self.members[0].attributes) 
+        Feature.__init__(self, self.members[0].seqid, self.members[0].source, self.members[0].gfftype, start, end, self.members[0].score, self.members[0].strand, self.members[0].phase, attributes)
         
         self.parent = self.members[0].parent
         children = set()
@@ -173,13 +178,15 @@ class CompoundFeature(Feature):
     
     
     def _calculatePhase(self):
+        #TODO: returns negative numbers!
+        
         if len(self.members)==1:
             self.phase = self.members[0].phase
             return
         
         if self.strand == '+':
             if not isinstance(self.members[0], TruncatedLeftFeature) and not isinstance(self.members[0], TruncatedBothSidesFeature):
-                self.phase = self.members[0].phase
+                self.phase = 0
             else:
                 #do the complicated calculation from the end
                 spliced_length = 0
@@ -197,15 +204,19 @@ class CompoundFeature(Feature):
                 #do complicated calculation from the start (the stop codon)
                 spliced_length = 0
                 for m in self.members:
-                    spliced_length+= (m.start-m.end)+1
+                    spliced_length+= (m.end-m.start)+1
                 
                 while spliced_length>2:
                     spliced_length -= 3
                 self.phase = str(spliced_length)
+
         else:
             self.phase = str(0)    
             
     def clone(self):
+        #TODO: The clone function is not working as expected. The cloned object
+        # has the attributes of the first member, and lacks attributes present in the
+        # cloned object, such as start_codon
         f = CompoundFeature(self.members)
         return f
     
@@ -255,8 +266,11 @@ class CompoundFeature(Feature):
         right.members = right_members
         left.end = splitstart-1
         right.start = splitend+1
+        
         left._calculatePhase()
+        left.attributes["codon_start"] = str(int(left.phase)+1)
         right._calculatePhase()
+        right.attributes["codon_start"] = str(int(right.phase)+1)
         return [left, right]
     
     def containsTruncatedMember(self):
@@ -316,7 +330,6 @@ class TruncatedLeftFeature(TruncatedFeature):
         
     def clone(self):
         f = TruncatedLeftFeature()
-        import copy
         f.seqid = self.seqid
         f.source = self.source
         f.gfftype = self.gfftype
@@ -346,7 +359,9 @@ class TruncatedLeftFeature(TruncatedFeature):
         right.start = splitend+1
         #recalculate phase since the positions were changed
         left._calculatePhase()
+        left.attributes["codon_start"] = str(int(left.phase)+1)
         right._calculatePhase()
+        right.attributes["codon_start"] = str(int(right.phase)+1)
         return [left, right]
     
     
@@ -381,12 +396,14 @@ class TruncatedRightFeature(TruncatedFeature):
     
     
     def _calculatePhase(self):
+            
         if self.strand == '-':
             #the start has been trimmed, so we need to try and obtain the phase from the stop codon at the end
             #note: if this is part of a compound feature, then the compound feature will have to calculate the 
             length = (self.end - self.start)+1 #+1 because: [1,2,3] -> 3-1 = 2; but the length is actually 3
             while length>2:
                 length-=3
+            
             self.phase = str(length)
         else:
             #the start codon is instact
@@ -426,7 +443,9 @@ class TruncatedRightFeature(TruncatedFeature):
         right.start = splitend+1
         #recalculate phase since the positions were changed
         left._calculatePhase()
+        left.attributes["codon_start"] = str(int(left.phase)+1)
         right._calculatePhase()
+        right.attributes["codon_start"] = str(int(right.phase)+1)
         return [left, right]
     
     
@@ -492,6 +511,8 @@ class TruncatedBothSidesFeature(TruncatedFeature):
         right.start = splitend+1
         #recalculate phase since the positions were changed
         left._calculatePhase()
+        left.attributes["codon_start"] = str(int(left.phase)+1)
         right._calculatePhase()
+        right.attributes["codon_start"] = str(int(right.phase)+1)
         
         return [left, right]

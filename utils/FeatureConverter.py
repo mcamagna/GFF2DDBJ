@@ -317,6 +317,8 @@ class FeatureConverter:
      
     def _splitCDSWithGaps(self, gff_feature_dict):
         """Finds assembly_gaps that lie within the bounds of a CDS, and splits the CDS into two pieces"""
+        #TODO: mRNA's should be split as well
+        #TODO: exons/introns should probably be split as well
         
         features_to_add = []
         keys_to_remove = set()
@@ -357,6 +359,7 @@ class FeatureConverter:
                             split_cdss = cds.split(gap.start, gap.end)
                             left = split_cdss[0]
                             right = split_cdss[1]
+                            
                             feature.children.remove(cds)
                             feature.children.append(left)
                             feature.children.append(right)
