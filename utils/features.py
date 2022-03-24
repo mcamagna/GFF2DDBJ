@@ -393,7 +393,6 @@ class TruncatedRightFeature(TruncatedFeature):
     
     
     def _calculatePhase(self):
-            
         if self.strand == '-':
             #the start has been trimmed, so we need to try and obtain the phase from the stop codon at the end
             #note: if this is part of a compound feature, then the compound feature will have to calculate the 

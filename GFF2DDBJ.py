@@ -8,6 +8,8 @@ from utils.FeatureConverter import FeatureConverter
 from utils.FastaParser import FastaParser
 from utils.Parameters import Parameters
 import argparse
+from utils.features import TruncatedBothSidesFeature, CompoundFeature,\
+    TruncatedFeature
 
 def checkFilepaths(filepaths):
     for path in filepaths:
@@ -80,6 +82,16 @@ def main():
     fconverter = FeatureConverter()
     fconverter.convertFeatures(features)
     fconverter.addAssemblyGaps(features, fastaParser.assembly_gaps)
+    #TODO: if there are CDS sequences with unknow start and end, get the sequence from the fasta file
+    # and test all three reading frames on which has no stop codon in the sequence
+    
+    features_to_translate = []
+    for feature in features.values():
+        if isinstance(feature, TruncatedBothSidesFeature) or (isinstance(feature, CompoundFeature) and isinstance(feature.members[0], TruncatedFeature) and isinstance(feature.members[-1], TruncatedFeature) and len(feature.members)>1):
+            features_to_translate.append(feature)
+    if len(features_to_translate)>0:
+        print("Found coding sequences with missing start and stop codon. Guessing best reading frame... this may take a while.")        
+        fastaParser.guessBestReadingFrame(features_to_translate)
     
     ddbjwriter.writeHeader()
     ddbjwriter.writeFeatures(features, fasta_headers)

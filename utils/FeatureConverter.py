@@ -7,6 +7,7 @@ from utils.FastaParser import FastaParser
 from utils.Parameters import Parameters
 from utils.features import Feature, CompoundFeature, TruncatedLeftFeature, TruncatedRightFeature,TruncatedFeature, TruncatedBothSidesFeature
 import re
+from PIL.features import features
 
 class FeatureConverter:
     
@@ -198,11 +199,12 @@ class FeatureConverter:
                 gff_feature_dict[name] = f
                 
         self._splitCDSWithGaps(gff_feature_dict)
+            
         #if CDS sequences were split, they will contain the ID attribute again
         #therefore:
         self._checkValidityOfQualifiers(gff_feature_dict)
         self._removeEntriesWithouthQualifiers(gff_feature_dict)
-        self._removeCDSWithBothSidesTruncated(gff_feature_dict)
+        #self._removeCDSWithBothSidesTruncated(gff_feature_dict)
         
     
     def _removeCDSWithBothSidesTruncated(self, gff_feature_dict):
@@ -429,7 +431,7 @@ class FeatureConverter:
         self._mapQualifiers(gff_feature_dict)
         self._fixLocusTagsAndGeneNames(gff_feature_dict)
         self._removePlaceHolderTranscriptsFeatures(gff_feature_dict)
-        self._removeCDSWithBothSidesTruncated(gff_feature_dict)
+        #self._removeCDSWithBothSidesTruncated(gff_feature_dict)
         self._removeGeneFeatures(gff_feature_dict)
         self._addSourceFeatures(gff_feature_dict)
         self._checkValidityOfQualifiers(gff_feature_dict)
@@ -442,9 +444,6 @@ class FeatureConverter:
         #otherwise they would receive different hashes
         self._addExonIntronNumbers(gff_feature_dict)
         
-        
-        len_after = len(gff_feature_dict)
-        removed_feature_count = len_before-len_after
         #if removed_feature_count>0:
         #    print(f"Number of invalid GFF entries that will not be converted: {removed_feature_count}")
         
