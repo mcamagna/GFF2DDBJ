@@ -13,10 +13,10 @@ Simply download this repository and execute the GFF2DDBJ.py file. There are no d
 
 The most simple case is to simply run the tool using:
 ```
-python GFF2DDBJ.py *path_to_gff_file* *path_to_fasta_file* 
+python GFF2DDBJ.py gff_file fasta_file 
 ```
 By default, only CDS features will be exported, but running this tool with the *--export_all* parameter will export all valid DDBJ features that can be found in the GFF file (mRNA, exons, intron, etc.).
 ```
-python GFF2DDBJ.py --export_all *path_to_gff_file* *path_to_fasta_file* 
+python GFF2DDBJ.py --export_all gff_file fasta_file 
 ```
 *Please note that exporting more features than absolutely necessary will make submission to DDBJ more difficult, since DDBJ enforces arbitrary rules, which are not (or not well) documented in their submission guidelines. While considerable efforts were made to satisfy their many criteria, this tool only incorporates rules that I was made aware off via email correspondence of my own WGS submission.*
