@@ -15,6 +15,7 @@ class Parameters:
         Parameters.gff_contains_startcodons = False
         Parameters.gff_contains_genes = False
         Parameters.gff_contains_transcripts = False
+        Parameters.export_all = False
         Parameters.keywords = []
     
     @staticmethod

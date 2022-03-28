@@ -31,6 +31,7 @@ def main():
     parser.add_argument('--mol_type', help="Type of molecule used in the sample. If not provided, you will be asked to choose the type if necessary.")
     parser.add_argument('--locus_tag_prefix', help="A prefix that is attached before each gene name. Must be 3-12 letters long and contain only alphanumeric characters. The first character should be a letter.")
     parser.add_argument('--no_sorting', action='store_true', help="By default, the features of each source entry will be sorted by position. Use this flag to disable this behaviour.")
+    parser.add_argument('--export_all', action='store_true', help="Parses the GFF completely, but only writes the source and CDS features. For genome annotations this is typically sufficient and can avoid difficulties such as alternatative splicing, which is not handled well in DDBJ files.")
     
     #parser.print_help()
     
@@ -44,6 +45,7 @@ def main():
     Parameters.source_attributes['strain'] = args.strain
     Parameters.locus_attributes["locus_tag_prefix"] = args.locus_tag_prefix
     Parameters.sort_features = not args.no_sorting
+    Parameters.export_all = args.export_all
     
     if OUTFILE is None:
         OUTFILE = INFILE.replace(".gff3", "").replace(".GFF3", "").replace(".gff", "").replace(".GFF", '')

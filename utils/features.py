@@ -88,6 +88,11 @@ class Feature:
             to_return.update(child.getAllDownstreamOfType(gfftypes))
         return to_return
     
+    
+    def removeChild(self, to_remove):
+        self.children = [x for x in self.children if x!=to_remove]
+        
+    
     def removeDownstreamChild(self, obj):
         """Removes a feature/object from the children list of either this object, 
         or the downstream child that is the parent of this object"""

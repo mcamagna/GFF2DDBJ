@@ -420,11 +420,32 @@ class FeatureConverter:
             
         for key, value in features_to_add:
             gff_feature_dict[key] = value 
+    
+    
           
-          
+    def removeAllButCDS(self, gff_feature_dict):
+        """Removes all features, except CDS and source."""
+        keys_to_remove = set()
+        for key, feature in gff_feature_dict.items():
+            if feature.gfftype == 'source' or feature.gfftype == 'CDS':
+                continue
+            
+            keys_to_remove.add(key)
+            for child in feature.children:
+                child.parent = feature.parent
+            feature.children.clear()
+            
+            if feature.parent is not None:
+                feature.parent.removeChild(feature)
+            
+        for k in keys_to_remove:
+            try:
+                gff_feature_dict.pop(k)
+            except:
+                pass
+        
                     
     def convertFeatures(self, gff_feature_dict):
-        len_before = len(gff_feature_dict)
         
         self._addAdditionalCDSQualifiers(gff_feature_dict)
         self._mapGFF_Features(gff_feature_dict)
@@ -437,12 +458,17 @@ class FeatureConverter:
         self._checkValidityOfQualifiers(gff_feature_dict)
         self._removeEntriesWithouthQualifiers(gff_feature_dict)
         
+        if not Parameters.export_all:
+            #TODO:remove all features except CDS and source
+            self.removeAllButCDS(gff_feature_dict)
+        
         #Braker2 was found to annotate the same region multiple times, with slightly different ID's
         #after conversion, it is possible that we end up with identical features. Let's remove them
         self._removeDuplicateFeatures(gff_feature_dict)
         #exon/intron numbers are added after removing of duplicates has succeeded
         #otherwise they would receive different hashes
-        self._addExonIntronNumbers(gff_feature_dict)
+        if Parameters.export_all:
+            self._addExonIntronNumbers(gff_feature_dict)
         
         #if removed_feature_count>0:
         #    print(f"Number of invalid GFF entries that will not be converted: {removed_feature_count}")
