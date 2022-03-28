@@ -204,32 +204,10 @@ class FeatureConverter:
         #therefore:
         self._checkValidityOfQualifiers(gff_feature_dict)
         self._removeEntriesWithouthQualifiers(gff_feature_dict)
-        #self._removeCDSWithBothSidesTruncated(gff_feature_dict)
+        self._removeDuplicateFeatures(gff_feature_dict)
         
     
-    def _removeCDSWithBothSidesTruncated(self, gff_feature_dict):
-        """If a CDS, has an unknown start, and an unknown end, then
-        we can't calculate the codon_start qualifier, which is required by DDBJ.
-        We'll just remove these features"""
-        
-        keys_to_remove = set()
-        
-        for key, feature in gff_feature_dict.items():
-            if feature.gfftype == "CDS":
-                if isinstance(feature, TruncatedBothSidesFeature):
-                    keys_to_remove.add(key)
-                elif isinstance(feature, CompoundFeature):
-                    if isinstance(feature.members[0], TruncatedFeature) and isinstance(feature.members[-1], TruncatedFeature):
-                        keys_to_remove.add(key)
-        
-        for k in keys_to_remove:
-            feature = gff_feature_dict.get(k)
-            gff_feature_dict.pop(k)
-            if feature.parent is not None:
-                try:
-                    feature.parent.children.remove(feature)
-                except:
-                    pass
+    
     
     
     
@@ -459,7 +437,6 @@ class FeatureConverter:
         self._removeEntriesWithouthQualifiers(gff_feature_dict)
         
         if not Parameters.export_all:
-            #TODO:remove all features except CDS and source
             self.removeAllButCDS(gff_feature_dict)
         
         #Braker2 was found to annotate the same region multiple times, with slightly different ID's
