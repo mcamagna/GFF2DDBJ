@@ -85,7 +85,11 @@ class DDBJWriter:
             if i>0:
                 s += '\t\t\t'
             value = f.attributes[qualifier]
-            s += qualifier + '\t' + value +'\n'
+            if isinstance(value, list): #some qualifiers such as 'note' can occur multiple times
+                for v in value:
+                    s += qualifier + '\t' + v +'\n'   
+            else:
+                s += qualifier + '\t' + value +'\n'
             i+=1
             
         if s[-1] != '\n':

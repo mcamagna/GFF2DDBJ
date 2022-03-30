@@ -32,6 +32,7 @@ def main():
     parser.add_argument('--locus_tag_prefix', help="A prefix that is attached before each gene name. Must be 3-12 letters long and contain only alphanumeric characters. The first character should be a letter.")
     parser.add_argument('--no_sorting', action='store_true', help="By default, the features of each source entry will be sorted by position. Use this flag to disable this behaviour.")
     parser.add_argument('--export_all', action='store_true', help="Parses the GFF completely, but only writes the source and CDS features. For genome annotations this is typically sufficient and can avoid difficulties such as alternatative splicing, which is not handled well in DDBJ files.")
+    parser.add_argument('--gene_as_note', action='store_true', help="By default, the gene name/id will be written as 'gene' qualifier into each feature belonging to that gene. Using this flag, each feature will instead be labeled with 'note gene ID' instead.")
     
     #parser.print_help()
     
@@ -46,6 +47,7 @@ def main():
     Parameters.locus_attributes["locus_tag_prefix"] = args.locus_tag_prefix
     Parameters.sort_features = not args.no_sorting
     Parameters.export_all = args.export_all
+    Parameters.gene_as_note = args.gene_as_note
     
     if OUTFILE is None:
         OUTFILE = INFILE.replace(".gff3", "").replace(".GFF3", "").replace(".gff", "").replace(".GFF", '')
@@ -84,9 +86,8 @@ def main():
     fconverter = FeatureConverter()
     fconverter.convertFeatures(features)
     fconverter.addAssemblyGaps(features, fastaParser.assembly_gaps)
-    #TODO: if there are CDS sequences with unknow start and end, get the sequence from the fasta file
-    # and test all three reading frames on which has no stop codon in the sequence
     
+
     features_to_translate = []
     for feature in features.values():
         if isinstance(feature, TruncatedBothSidesFeature) or (isinstance(feature, CompoundFeature) and isinstance(feature.members[0], TruncatedFeature) and isinstance(feature.members[-1], TruncatedFeature) and len(feature.members)>1):

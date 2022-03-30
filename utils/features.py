@@ -59,7 +59,7 @@ class Feature:
             name = name.upper()
             return name.upper() in [k.upper() for k in self.attributes.keys()]
         else:
-            return k in self.attributes.keys()
+            return name in self.attributes.keys()
         
             
     def getParent(self):

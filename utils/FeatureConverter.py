@@ -7,8 +7,6 @@ from utils.FastaParser import FastaParser
 from utils.Parameters import Parameters
 from utils.features import Feature, CompoundFeature, TruncatedLeftFeature, TruncatedRightFeature,TruncatedFeature, TruncatedBothSidesFeature
 import re
-from PIL.features import features
-
 class FeatureConverter:
     
     def __init__(self):
@@ -241,12 +239,20 @@ class FeatureConverter:
                         
                     locus_tag = prefix+"_"+locus_tag
                     feature.attributes["locus_tag"] = locus_tag
-                    for child in feature.children:
+                    
+                    #we will now assign the gene and locus tag to all downstream children 
+                    for child in feature.getAllDownstreamChildren():
                         #We will assign both gene and locus tag at this point.
                         #During the _checkValidityOfQualifiers step, the correct choice
                         #the locus tag may be removed depending on the circumstances.
                         child.attributes["gene"] = feature.attributes["gene"]
                         child.attributes["locus_tag"] = locus_tag
+                        if Parameters.gene_as_note:
+                            notes = child.attributes.get("note")
+                            if notes is None:
+                                notes = []
+                                child.attributes["note"] = notes
+                            notes.append("gene_ID: "+feature.attributes["gene"])
 
     
     def _removeDuplicateFeatures(self, gff_feature_dict):
@@ -465,23 +471,32 @@ class FeatureConverter:
     def _checkValidityOfQualifiers(self, gff_feature_dict):
         
         for fkey in gff_feature_dict.keys():
-            gff_feature = gff_feature_dict[fkey]
+            feature = gff_feature_dict[fkey]
             filtered_attributes = dict()
-            for qualifier in gff_feature.attributes.keys():
-                if qualifier in self.ddbj_features[gff_feature.gfftype]["Mandatory"] or qualifier in self.ddbj_features[gff_feature.gfftype]["Optional"]:
-                    filtered_attributes[qualifier] = gff_feature.attributes[qualifier]
-            gff_feature.attributes = filtered_attributes
+            for qualifier in feature.attributes.keys():
+                if qualifier in self.ddbj_features[feature.gfftype]["Mandatory"] or qualifier in self.ddbj_features[feature.gfftype]["Optional"]:
+                    filtered_attributes[qualifier] = feature.attributes[qualifier]
+            feature.attributes = filtered_attributes
             
-            #If both gene and locus_tag qualifiers are present, keep only the gene qualifier
-            if gff_feature.attributes.get("gene") is not None and gff_feature.attributes.get("locus_tag") is not None:
-                gff_feature.attributes.pop('locus_tag')
+            #delete the gene qualifier if genes are written as notes
+            if Parameters.gene_as_note:
+                if feature.hasAttribute("gene", True) and feature.hasAttribute("note", True):
+                    feature.attributes.pop("gene")
+            
+            #If both gene and locus_tag qualifiers are present and identical, keep only the gene qualifier
+            if feature.attributes.get("gene") is not None and feature.attributes.get("locus_tag") is not None:
+                if feature.attributes.get("gene") == feature.attributes.get("locus_tag"):
+                    if Parameters.gene_as_note:
+                        feature.attributes.pop('gene')
+                    else:
+                        feature.attributes.pop('locus_tag')
             
             all_mandatory_present = True
-            for mandatory_qualifier in self.ddbj_features[gff_feature.gfftype]["Mandatory"]:
+            for mandatory_qualifier in self.ddbj_features[feature.gfftype]["Mandatory"]:
                 if mandatory_qualifier not in filtered_attributes.keys():
                     all_mandatory_present = False
             if not all_mandatory_present:
-                print(f"ERROR: Mandatory qualifier missing in GFF type {gff_feature}.\nDDBJ requires the following qualifiers for this feature:", self.ddbj_features[gff_feature.gfftype]["Mandatory"])
+                print(f"ERROR: Mandatory qualifier missing in GFF type {feature}.\nDDBJ requires the following qualifiers for this feature:", self.ddbj_features[feature.gfftype]["Mandatory"])
                 import sys
                 sys.exit(1)
                 
