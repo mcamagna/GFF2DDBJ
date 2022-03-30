@@ -87,7 +87,12 @@ class GFFParser:
             
             
             #Some GFF files assign the same ID to all CDS fragments, spread over multiple lines, others use different ID's
+            #Sometimes, the ID is even completely missing for child nodes
             #If the ID is already present, we can assign a new ID and later merge them via their shared parent
+            if feature.getAttribute("ID") is None:
+                if feature.getAttribute("Parent") is not None:
+                    feature.addAttribute("ID", feature.getAttribute("Parent")+"X")
+                pass
             while feature.getAttribute("ID") in self.features.keys():
                 feature.attributes["ID"] = feature.attributes["ID"]+'X'
             self.features[feature.getAttribute("ID")] = feature
