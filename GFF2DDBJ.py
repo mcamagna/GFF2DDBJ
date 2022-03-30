@@ -10,6 +10,7 @@ from utils.Parameters import Parameters
 import argparse
 from utils.features import TruncatedBothSidesFeature, CompoundFeature,\
     TruncatedFeature
+from utils import GFFWriter
 
 def checkFilepaths(filepaths):
     for path in filepaths:
@@ -33,6 +34,7 @@ def main():
     parser.add_argument('--no_sorting', action='store_true', help="By default, the features of each source entry will be sorted by position. Use this flag to disable this behaviour.")
     parser.add_argument('--export_all', action='store_true', help="Parses the GFF completely, but only writes the source and CDS features. For genome annotations this is typically sufficient and can avoid difficulties such as alternatative splicing, which is not handled well in DDBJ files.")
     parser.add_argument('--gene_as_note', action='store_true', help="By default, the gene name/id will be written as 'gene' qualifier into each feature belonging to that gene. Using this flag, each feature will instead be labeled with 'note gene ID' instead.")
+    parser.add_argument('--intermediate_gff', help="Optional: Output path for the intermediate GFF file. During parsing of the GFF files, some changes to the information in the GFF file may need to be introduced to allow exporting the file. Writing this intermediate GFF file can be useful to track down sources of error.")
     
     #parser.print_help()
     
@@ -48,6 +50,8 @@ def main():
     Parameters.sort_features = not args.no_sorting
     Parameters.export_all = args.export_all
     Parameters.gene_as_note = args.gene_as_note
+    Parameters.intermediate_gff = args.intermediate_gff
+    
     
     if OUTFILE is None:
         OUTFILE = INFILE.replace(".gff3", "").replace(".GFF3", "").replace(".gff", "").replace(".GFF", '')
@@ -63,6 +67,7 @@ def main():
         Parameters.parseHeaderFile(HEADERFILE)
         #print("The COMMON header currently contains these values:")
         #Parameters.printCommonParameters()
+    
     Parameters.askUserForRequiredParameters()
     
     ddbjwriter = DDBJWriter(OUTFILE)
@@ -73,6 +78,9 @@ def main():
     gffparser = GFFParser(INFILE)
     print("Number of features found in GFF file:", len(gffparser.features))
     features = gffparser.features
+    
+    if Parameters.intermediate_gff is not None:
+        GFFWriter.writeGFF(features)
     
     print("Parsing FASTA file")
     fastaParser = FastaParser(FASTAFILE)
