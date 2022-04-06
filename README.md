@@ -30,3 +30,7 @@ python GFF2DDBJ.py --export_all gff_file fasta_file
 python GFF2DDBJ.py -h 
 ```
 
+## 4. Citation
+
+If you use this software for scientific research, please cite it.
+Refer to the **about** section for informations on how to cite this software.
