@@ -101,6 +101,8 @@ def main():
     if len(features_to_translate)>0:
         print("Found coding sequences with missing start and stop codon. Guessing best reading frame... this may take a while.")        
         fastaParser.guessBestReadingFrame(features_to_translate)
+
+    #Remove CDS entries that were flagged with an INVALID_CDS feature while guessing the best reading frame
     
     ddbjwriter.writeHeader()
     ddbjwriter.writeFeatures(features, fasta_headers)

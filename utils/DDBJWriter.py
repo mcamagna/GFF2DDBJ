@@ -119,5 +119,8 @@ class DDBJWriter:
                 
             self._writeFeature(source_feature, isSourceFeature=True)
             for child in source_feature.children:
+                if child.attributes.get("INVALID_CDS") != None: #skip entreis that were flaged as having an invalid CDS
+                    print(f"Skipping INVALID CDS {child.attributes}")
+                    continue
                 self._writeFeature(child)
         

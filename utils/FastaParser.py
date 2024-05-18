@@ -124,8 +124,26 @@ class FastaParser:
         return best_frame
         
         
-            
-        
+    def translate_sequence(self, dna_seq):
+        codontab = {
+                    'TCA': 'S','TCC': 'S','TCG': 'S','TCT': 'S','TTC': 'F','TTT': 'F','TTA': 'L','TTG': 'L','TAC': 'Y', 'TAT': 'Y', 'TAA': '*', 'TAG': '*', 'TGC': 'C',
+                    'TGT': 'C','TGA': '*','TGG': 'W','CTA': 'L','CTC': 'L','CTG': 'L','CTT': 'L','CCA': 'P','CCC': 'P','CCG': 'P','CCT': 'P','CAC': 'H','CAT': 'H','CAA': 'Q','CAG': 'Q','CGA': 'R',
+                    'CGC': 'R','CGG': 'R','CGT': 'R','ATA': 'I','ATC': 'I','ATT': 'I','ATG': 'M','ACA': 'T','ACC': 'T','ACG': 'T','ACT': 'T','AAC': 'N','AAT': 'N','AAA': 'K','AAG': 'K','AGC': 'S',
+                    'AGT': 'S','AGA': 'R','AGG': 'R','GTA': 'V','GTC': 'V','GTG': 'V','GTT': 'V','GCA': 'A','GCC': 'A','GCG': 'A','GCT': 'A','GAC': 'D','GAT': 'D','GAA': 'E','GAG': 'E','GGA': 'G',
+                    'GGC': 'G','GGG': 'G','GGT': 'G' }
+                    
+        prot_seq = ""
+        for i in range(0, len(dna_seq)-2, 3):
+            codon = dna_seq[i]+ dna_seq[i+1]+dna_seq[i+2]
+            aa = codontab.get(codon.upper())
+            if aa is None:
+                print(f"WARNING: Could not translate codon {codon}.")
+            else:
+                prot_seq += aa
+        print(prot_seq)
+        return prot_seq
+
+
     def guessBestReadingFrame(self, ddbj_features):
         """For features where both start and end positions are unkown, we need to obtain
         the DNA sequence, and check all three codon offsets for whether we get stop codons within
@@ -155,12 +173,20 @@ class FastaParser:
             
             if line.startswith(">"):
                 if foundSequenceOfInterest:#if the current sequence needs to be parsed
-                    for feature in ddbj_features:
+                    for i, feature in enumerate(ddbj_features):
                         if feature.seqid == currentHeader:
                             extracted = self.extractSequence(feature, currentSeq)
                             best_frame = self.evaluateReadingFrames(extracted)
                             feature.attributes["codon_start"] = str(best_frame+1)
-                            
+                            #TODO: Check if contains stop codon and adjust CDS range otherwise
+                            print(feature.attributes)
+                            #print(extracted)
+                            prot_seq = self.translate_sequence(extracted) 
+                            print(prot_seq)
+                            #if "*" in prot_seq[:-1]:
+                            if "*" in prot_seq:
+                                print("WARNING: Found stop codon within translated CDS sequence.")
+                                feature.attributes['INVALID_CDS'] = "INVALID_CDS"
                             
                 currentHeader = line[1:].split(" ")[0]
                 currentSeq=""
