@@ -29,6 +29,12 @@ def main():
     parser.add_argument('--header', help="Optional: Location of the text file specifying the values for the DDBJ header. Check example_header.txt for more information.")
     parser.add_argument('--organism', help="Optional: Scientific name of the organism.")
     parser.add_argument('--strain', help="Name of the strain.")
+    #Added 2024/5 due to requirements from DDBJ
+    parser.add_argument('--country', help="The country where the sample was collected.")
+    parser.add_argument('--isolation_source', help="The isolation source of the sample.")
+    parser.add_argument('--host', help="The host of the sample.")
+    parser.add_argument('--collection_date', help="The collection date of the sample.")
+
     parser.add_argument('--mol_type', help="Type of molecule used in the sample. If not provided, you will be asked to choose the type if necessary.")
     parser.add_argument('--locus_tag_prefix', help="A prefix that is attached before each gene name. Must be 3-12 letters long and contain only alphanumeric characters. The first character should be a letter.")
     parser.add_argument('--export_all', action='store_true', help="Parses the GFF completely, but only writes the source and CDS features. For genome annotations this is typically sufficient and can avoid difficulties such as alternatative splicing, which is not handled well in DDBJ files.")
@@ -46,6 +52,16 @@ def main():
     Parameters.source_attributes['mol_type'] = args.mol_type
     Parameters.source_attributes['strain'] = args.strain
     Parameters.locus_attributes["locus_tag_prefix"] = args.locus_tag_prefix
+
+    if args.country is not None:
+        Parameters.source_attributes['country'] = args.country
+    if args.collection_date is not None:
+        Parameters.source_attributes['collection_date'] = args.collection_date
+    if args.host is not None:
+        Parameters.source_attributes['host'] = args.host
+    if args.isolation_source is not None:
+        Parameters.source_attributes["isolation_source"] = args.isolation_source
+
     Parameters.export_all = args.export_all
     Parameters.gene_as_note = args.gene_as_note
     Parameters.intermediate_gff = args.intermediate_gff
