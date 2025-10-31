@@ -116,7 +116,7 @@ class FeatureConverter:
         
         for group_key, group in grouped_locations.items():
             start = 1
-            end = FastaParser.fasta_dict[group_key] -2 #-2 because this is what UME validator asks for
+            end = FastaParser.fasta_dict[group_key]
             attr = Parameters.source_attributes.copy()
             if needs_submitter_seqid:
                 attr["submitter_seqid"] = group_key
@@ -135,7 +135,7 @@ class FeatureConverter:
         remaining = set(FastaParser.fasta_dict.keys()).difference(set(grouped_locations.keys()))
         for key in remaining:
             start = 1
-            end = FastaParser.fasta_dict[key] -2 #-2 because this is what UME validator asks for (lenght starts at 1 and includes last)
+            end = FastaParser.fasta_dict[key]
             attr = Parameters.source_attributes.copy()
             if needs_submitter_seqid:
                 attr["submitter_seqid"] = key
