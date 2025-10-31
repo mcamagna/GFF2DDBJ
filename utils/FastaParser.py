@@ -50,10 +50,10 @@ class FastaParser:
                 self.headers.append(line)
                 
             else:
-                if not line.startswith("\\\\"): #to ignore the completely unnecessary DDBJ fasta 'end flag'
-                    current_seq_len+= len(line)
-                    current_lines.append(line)
-                
+                line = line.replace('\\', '').replace('//','') #to ignore the completely unnecessary DDBJ fasta 'end flag'
+                current_seq_len+= len(line)
+                current_lines.append(line)
+            
         #Last fasta entry needs to be added        
         current_seq = "".join(current_lines)
         current_lines.clear()
@@ -164,7 +164,7 @@ class FastaParser:
         currentSeq = ""
         foundSequenceOfInterest = False
         for line in inp:
-            if line.startswith("\\\\"):
+            if line.startswith("\\\\") or line.startswith('//'):
                 continue
             
             if line[-1] == '\n':
